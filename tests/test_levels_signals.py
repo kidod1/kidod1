@@ -81,10 +81,8 @@ def test_advise_directions():
 
     bullish = advise(featured, _make_pred(0.72), supports, resistances)
     bearish = advise(featured, _make_pred(0.28), supports, resistances)
-    # 다른 조건이 같을 때 상승 확률이 높으면 점수가 더 높아야 한다
-    assert bullish.score > bearish.score
-    assert bullish.action in ("강한 매수", "매수", "관망")
-    assert bearish.action in ("강한 매도", "매도", "관망")
+    # 다른 조건이 같을 때 상승 확률이 높으면 점수가 4점(±2씩) 더 높아야 한다
+    assert bullish.score == bearish.score + 4
     assert any("모델" in r for r in bullish.reasons)
     text = format_advice(bullish)
     assert "타이밍 판단" in text
@@ -92,11 +90,46 @@ def test_advise_directions():
           f"(상승 시나리오 {bullish.score:+d} / 하락 시나리오 {bearish.score:+d})")
 
 
+def test_advise_htf_trends():
+    """상위 시간대 추세가 점수에 반영되는지 확인."""
+    df = make_synthetic_ohlcv(n=600)
+    featured = build_features(df)
+    base = advise(featured, _make_pred(0.50), [], [])
+    up = advise(featured, _make_pred(0.50), [], [],
+                htf_trends={"4h": "상승", "1d": "상승"})
+    down = advise(featured, _make_pred(0.50), [], [],
+                  htf_trends={"4h": "하락", "1d": "중립"})
+    assert up.score == base.score + 2
+    assert down.score == base.score - 1
+    assert any("4h 추세 상승" in r for r in up.reasons)
+    print("test_advise_htf_trends 통과")
+
+
+def test_advise_stop_target():
+    """매수/매도 판단일 때만 ATR 손절/목표가가 제안되는지 확인."""
+    df = make_synthetic_ohlcv(n=600)
+    featured = build_features(df)
+    # 강한 상승 조건을 인위적으로 만들어 매수 판단 유도
+    strong = advise(featured, _make_pred(0.75), [], [],
+                    htf_trends={"4h": "상승", "1d": "상승"})
+    assert strong.score >= 2
+    assert strong.stop_loss is not None and strong.take_profit is not None
+    price = float(featured["close"].iloc[-1])
+    assert strong.stop_loss < price < strong.take_profit
+    assert "손절" in format_advice(strong)
+    print(f"test_advise_stop_target 통과 "
+          f"(손절 {strong.stop_loss:,.2f} < 현재 {price:,.2f} < 목표 {strong.take_profit:,.2f})")
+
+
 def test_advise_neutral():
+    from predictor.signals import _score_to_action
     df = make_synthetic_ohlcv(n=600)
     featured = build_features(df)
     neutral = advise(featured, _make_pred(0.50), [], [])
-    assert -1 <= neutral.score <= 1
+    # 점수와 판단이 일관돼야 하고, 관망이면 손절/목표가는 없어야 한다
+    assert neutral.action == _score_to_action(neutral.score)
+    if neutral.action == "관망":
+        assert neutral.stop_loss is None
     print(f"test_advise_neutral 통과 (점수 {neutral.score:+d}, {neutral.action})")
 
 
@@ -104,5 +137,7 @@ if __name__ == "__main__":
     test_levels_on_range()
     test_levels_random_walk_no_crash()
     test_advise_directions()
+    test_advise_htf_trends()
+    test_advise_stop_target()
     test_advise_neutral()
     print("\n모든 레벨/신호 테스트 통과!")

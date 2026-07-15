@@ -28,6 +28,81 @@ def macd(close: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9):
     return macd_line, signal_line, macd_line - signal_line
 
 
+def true_range(df: pd.DataFrame) -> pd.Series:
+    """True Range = max(고가-저가, |고가-전종가|, |저가-전종가|)."""
+    prev_close = df["close"].shift(1)
+    return pd.concat([
+        df["high"] - df["low"],
+        (df["high"] - prev_close).abs(),
+        (df["low"] - prev_close).abs(),
+    ], axis=1).max(axis=1)
+
+
+def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """ATR (Wilder 방식) — 평균 변동폭."""
+    return true_range(df).ewm(alpha=1 / period, adjust=False).mean()
+
+
+def adx(df: pd.DataFrame, period: int = 14) -> tuple[pd.Series, pd.Series]:
+    """(ADX, DI차이)를 반환한다.
+
+    ADX는 추세의 '강도'(방향 무관, 25 이상이면 추세장),
+    DI차이(+DI - -DI)는 추세의 '방향'(양수=상승 추세)이다.
+    """
+    up_move = df["high"].diff()
+    down_move = -df["low"].diff()
+    plus_dm = up_move.where((up_move > down_move) & (up_move > 0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0), 0.0)
+
+    alpha = 1 / period
+    tr_smooth = true_range(df).ewm(alpha=alpha, adjust=False).mean().replace(0, np.nan)
+    plus_di = 100 * plus_dm.ewm(alpha=alpha, adjust=False).mean() / tr_smooth
+    minus_di = 100 * minus_dm.ewm(alpha=alpha, adjust=False).mean() / tr_smooth
+
+    dx = 100 * (plus_di - minus_di).abs() / (plus_di + minus_di).replace(0, np.nan)
+    return dx.ewm(alpha=alpha, adjust=False).mean(), plus_di - minus_di
+
+
+def mfi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """MFI (Money Flow Index) — 거래량 가중 RSI. 20 이하 과매도, 80 이상 과매수."""
+    typical = (df["high"] + df["low"] + df["close"]) / 3
+    flow = typical * df["volume"]
+    direction = typical.diff()
+    pos = flow.where(direction > 0, 0.0).rolling(period).sum()
+    neg = flow.where(direction < 0, 0.0).rolling(period).sum().replace(0, np.nan)
+    return 100 - 100 / (1 + pos / neg)
+
+
+def obv(df: pd.DataFrame) -> pd.Series:
+    """OBV (On-Balance Volume) — 상승 캔들 거래량은 더하고 하락은 빼는 누적 흐름."""
+    sign = np.sign(df["close"].diff()).fillna(0)
+    return (sign * df["volume"]).cumsum()
+
+
+def stoch_rsi(close: pd.Series, period: int = 14) -> pd.Series:
+    """스토캐스틱 RSI — RSI가 최근 period 범위에서 어디쯤인지 (0~1)."""
+    r = rsi(close, period)
+    lo = r.rolling(period).min()
+    hi = r.rolling(period).max()
+    return (r - lo) / (hi - lo).replace(0, np.nan)
+
+
+def ichimoku(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
+    """일목균형표 — (전환선, 기준선, 선행스팬A, 선행스팬B)를 반환한다.
+
+    선행스팬은 26캔들 앞에 그려지므로, '현재 캔들 위치의 구름'은
+    26캔들 전에 계산된 값이다 (shift(26) 적용 완료 상태로 반환).
+    """
+    def midline(period: int) -> pd.Series:
+        return (df["high"].rolling(period).max() + df["low"].rolling(period).min()) / 2
+
+    tenkan = midline(9)     # 전환선
+    kijun = midline(26)     # 기준선
+    senkou_a = ((tenkan + kijun) / 2).shift(26)  # 선행스팬A (현재 위치의 구름)
+    senkou_b = midline(52).shift(26)             # 선행스팬B
+    return tenkan, kijun, senkou_a, senkou_b
+
+
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
     """OHLCV DataFrame에 피처와 타깃 컬럼을 추가해 반환한다.
 
@@ -66,6 +141,31 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # RSI (단기 + 장기 호라이즌)
     out["rsi_14"] = rsi(close, 14)
     out["rsi_56"] = rsi(close, 56)
+
+    # ATR — 평균 변동폭 (가격 대비 비율로 정규화)
+    out["atr_ratio"] = atr(out, 14) / close
+
+    # ADX — 추세 강도와 방향
+    adx_val, di_diff = adx(out, 14)
+    out["adx_14"] = adx_val
+    out["di_diff"] = di_diff
+
+    # 자금 흐름 — MFI, OBV 기울기 (최근 12캔들 변화를 거래량 합으로 정규화)
+    out["mfi_14"] = mfi(out, 14)
+    obv_series = obv(out)
+    out["obv_slope"] = (obv_series - obv_series.shift(12)) / \
+        out["volume"].rolling(24).sum().replace(0, np.nan)
+
+    # 스토캐스틱 RSI
+    out["stoch_rsi"] = stoch_rsi(close, 14)
+
+    # 일목균형표 — 구름 대비 가격 위치, 전환선/기준선 관계
+    tenkan, kijun, senkou_a, senkou_b = ichimoku(out)
+    cloud_top = pd.concat([senkou_a, senkou_b], axis=1).max(axis=1)
+    cloud_bottom = pd.concat([senkou_a, senkou_b], axis=1).min(axis=1)
+    out["price_vs_cloud_top"] = close / cloud_top - 1
+    out["price_vs_cloud_bottom"] = close / cloud_bottom - 1
+    out["tenkan_vs_kijun"] = (tenkan - kijun) / close
 
     # 시간대 주기성 (암호화폐는 요일/시간대 패턴이 존재)
     hour = out["open_time"].dt.hour
@@ -110,4 +210,7 @@ FEATURE_COLUMNS = [
     "bb_position", "bb_width",
     "volume_ratio", "taker_buy_ratio",
     "hour_sin", "hour_cos", "dow_sin", "dow_cos",
+    "atr_ratio", "adx_14", "di_diff",
+    "mfi_14", "obv_slope", "stoch_rsi",
+    "price_vs_cloud_top", "price_vs_cloud_bottom", "tenkan_vs_kijun",
 ]

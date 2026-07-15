@@ -27,7 +27,7 @@ from predictor.data import fetch_klines
 from predictor.features import build_features
 from predictor.levels import find_levels, format_levels
 from predictor.model import backtest, predict_next, prepare_dataset
-from predictor.signals import advise, format_advice
+from predictor.signals import advise, format_advice, higher_timeframes, trend_direction
 
 DEFAULT_INTERVAL = "1h"
 DEFAULT_LIMIT = 1500
@@ -135,6 +135,17 @@ def run_levels(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
             + format_levels(supports, resistances, current))
 
 
+def fetch_htf_trends(symbol: str, interval: str) -> dict[str, str]:
+    """기준 간격보다 큰 상위 시간대(4h/1d)의 추세 방향을 조회한다."""
+    trends: dict[str, str] = {}
+    for itv in higher_timeframes(interval):
+        try:
+            trends[itv] = trend_direction(fetch_klines(symbol, itv, 200))
+        except Exception:  # noqa: BLE001 — 상위 시간대 조회 실패는 치명적이지 않음
+            continue
+    return trends
+
+
 def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     """예측 + 지지/저항 + 타이밍 판단을 종합한 메시지를 만든다."""
     ohlcv = fetch_klines(symbol, interval, limit)
@@ -143,7 +154,8 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     pred = predict_next(train, latest)
     featured = build_features(ohlcv)
     supports, resistances = find_levels(ohlcv)
-    advice = advise(featured, pred, supports, resistances)
+    advice = advise(featured, pred, supports, resistances,
+                    htf_trends=fetch_htf_trends(symbol, interval))
 
     prediction_part = format_prediction_message(
         symbol.upper(), interval, pred,
@@ -178,7 +190,8 @@ def full_report(
             pred = predict_next(train, latest)
             featured = build_features(ohlcv)
             supports, resistances = find_levels(ohlcv)
-            advice = advise(featured, pred, supports, resistances)
+            htf = fetch_htf_trends(symbol, interval)
+            advice = advise(featured, pred, supports, resistances, htf_trends=htf)
         except Exception as exc:  # noqa: BLE001
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
@@ -190,6 +203,8 @@ def full_report(
             f"  예측: {pred.direction} {confidence:.1%}"
             f" (정확도 {result.mean_accuracy:.0%}/기준 {result.baseline_accuracy:.0%})",
         ]
+        if htf:
+            lines.append("  추세: " + " / ".join(f"{k} {v}" for k, v in htf.items()))
         if supports:
             lines.append(f"  지지: {supports[0].price:,.4f} ({supports[0].distance_pct:+.1%},"
                          f" 터치 {supports[0].touches}회)")
@@ -197,6 +212,8 @@ def full_report(
             lines.append(f"  저항: {resistances[0].price:,.4f} ({resistances[0].distance_pct:+.1%},"
                          f" 터치 {resistances[0].touches}회)")
         lines.append(f"  판단: {advice.action} (점수 {advice.score:+d})")
+        if advice.stop_loss is not None and advice.take_profit is not None:
+            lines.append(f"  손절 {advice.stop_loss:,.4f} / 목표 {advice.take_profit:,.4f}")
         blocks.append("\n".join(lines))
 
     blocks.append("※ 참고용이며 재무적 조언이 아닙니다.")
