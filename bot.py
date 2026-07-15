@@ -45,6 +45,8 @@ HELP_TEXT = (
     "/signal SYMBOL [간격] — 종합 타이밍 판단\n"
     "    (예측 + 지지/저항 + 매수·매도 신호)\n"
     "/levels SYMBOL [간격] — 지지선/저항선만 빠르게\n"
+    "/report [SYMBOL...] — 전체 코인 종합 리포트 한 장\n"
+    "    (예측 + 지지/저항 + 판단을 코인별로 요약)\n"
     "/help — 이 도움말\n\n"
     "※ 참고용 통계 모델이며 재무적 조언이 아닙니다."
 )
@@ -157,6 +159,50 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     ])
 
 
+def full_report(
+    symbols: list[str],
+    interval: str = DEFAULT_INTERVAL,
+    limit: int = DEFAULT_LIMIT,
+) -> str:
+    """모든 코인의 예측·지지/저항·타이밍 판단을 한 장으로 정리한 종합 리포트."""
+    from datetime import datetime, timedelta, timezone
+
+    kst = datetime.now(timezone(timedelta(hours=9)))
+    blocks = [f"📋 종합 리포트 — {interval} 캔들 기준\n({kst:%m/%d %H:%M} KST)"]
+
+    for symbol in symbols:
+        try:
+            ohlcv = fetch_klines(symbol, interval, limit)
+            train, latest = prepare_dataset(ohlcv)
+            result = backtest(train, n_splits=3)
+            pred = predict_next(train, latest)
+            featured = build_features(ohlcv)
+            supports, resistances = find_levels(ohlcv)
+            advice = advise(featured, pred, supports, resistances)
+        except Exception as exc:  # noqa: BLE001
+            blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
+            continue
+
+        arrow = "📈" if pred.prob_up >= 0.5 else "📉"
+        confidence = max(pred.prob_up, pred.prob_down)
+        lines = [
+            f"{arrow} {symbol.upper()}  {pred.last_close:,.4f}",
+            f"  예측: {pred.direction} {confidence:.1%}"
+            f" (정확도 {result.mean_accuracy:.0%}/기준 {result.baseline_accuracy:.0%})",
+        ]
+        if supports:
+            lines.append(f"  지지: {supports[0].price:,.4f} ({supports[0].distance_pct:+.1%},"
+                         f" 터치 {supports[0].touches}회)")
+        if resistances:
+            lines.append(f"  저항: {resistances[0].price:,.4f} ({resistances[0].distance_pct:+.1%},"
+                         f" 터치 {resistances[0].touches}회)")
+        lines.append(f"  판단: {advice.action} (점수 {advice.score:+d})")
+        blocks.append("\n".join(lines))
+
+    blocks.append("※ 참고용이며 재무적 조언이 아닙니다.")
+    return "\n\n".join(blocks)
+
+
 def scan_symbols(
     symbols: list[str],
     interval: str = DEFAULT_INTERVAL,
@@ -213,6 +259,10 @@ def handle_command(text: str) -> str:
         symbols = [p.upper() for p in parts[1:]] or DEFAULT_WATCHLIST
         return scan_symbols(symbols)
 
+    if cmd == "/report":
+        symbols = [p.upper() for p in parts[1:]] or DEFAULT_WATCHLIST
+        return full_report(symbols)
+
     if cmd in ("/signal", "/levels"):
         if len(parts) < 2:
             return f"심볼을 입력해주세요. 예: {cmd} BTCUSDT 1h"
@@ -246,6 +296,9 @@ def main() -> int:
     parser.add_argument("--min-confidence", type=float, default=0.0,
                         help="자동 예측에서 이 확률 이상 확신할 때만 알림 전송 "
                              "(예: 0.6 — 기본 0.0은 항상 전송)")
+    parser.add_argument("--report", action="store_true",
+                        help="자동 전송을 개별 신호 대신 종합 리포트 한 장으로 보냄 "
+                             "(예측+지지/저항+판단 요약)")
     args = parser.parse_args()
 
     if not args.token:
@@ -266,20 +319,26 @@ def main() -> int:
         try:
             # 1) 자동(watch) 예측 푸시
             if next_push is not None and time.time() >= next_push:
-                for symbol in args.watch:
-                    try:
-                        pred, result = analyze_symbol(symbol, args.watch_interval)
-                    except Exception as exc:  # noqa: BLE001
-                        tg.send_message(args.chat_id, f"{symbol} 자동 예측 실패: {exc}")
-                        continue
-                    confidence = max(pred.prob_up, pred.prob_down)
-                    if confidence < args.min_confidence:
-                        continue  # 확신이 낮은 신호는 조용히 넘어감
-                    tg.send_message(args.chat_id, format_prediction_message(
-                        symbol.upper(), args.watch_interval, pred,
-                        accuracy=result.mean_accuracy,
-                        baseline=result.baseline_accuracy,
-                    ))
+                if args.report:
+                    # 종합 리포트 한 장으로 전송
+                    tg.send_message(args.chat_id,
+                                    full_report(args.watch, args.watch_interval))
+                else:
+                    # 코인별 개별 신호 (min-confidence 필터 적용)
+                    for symbol in args.watch:
+                        try:
+                            pred, result = analyze_symbol(symbol, args.watch_interval)
+                        except Exception as exc:  # noqa: BLE001
+                            tg.send_message(args.chat_id, f"{symbol} 자동 예측 실패: {exc}")
+                            continue
+                        confidence = max(pred.prob_up, pred.prob_down)
+                        if confidence < args.min_confidence:
+                            continue  # 확신이 낮은 신호는 조용히 넘어감
+                        tg.send_message(args.chat_id, format_prediction_message(
+                            symbol.upper(), args.watch_interval, pred,
+                            accuracy=result.mean_accuracy,
+                            baseline=result.baseline_accuracy,
+                        ))
                 next_push = time.time() + args.every
 
             # 2) 사용자 명령 처리 (long polling)
@@ -299,7 +358,7 @@ def main() -> int:
                         + HELP_TEXT,
                     )
                     continue
-                if text.strip().lower().startswith(("/predict", "/scan", "/signal")):
+                if text.strip().lower().startswith(("/predict", "/scan", "/signal", "/report")):
                     tg.send_message(chat_id, "분석 중입니다... (10~30초 소요) ⏳")
                 tg.send_message(chat_id, handle_command(text))
 
