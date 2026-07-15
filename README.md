@@ -99,9 +99,13 @@ python bot.py --watch BTCUSDT ETHUSDT --every 300 --report
 python bot.py --watch BTCUSDT ETHUSDT --every 3600 --min-confidence 0.6
 ```
 
-GitHub Actions 워크플로는 **5분마다 5개 코인의 종합 리포트**를 전송합니다.
-알림이 너무 잦으면 `.github/workflows/predict.yml` 의 cron 한 줄만 바꾸면 됩니다
-(`*/15 * * * *` = 15분, `5 * * * *` = 매시간).
+GitHub Actions 워크플로는 **지지/저항 돌파 알림** 방식으로 동작합니다:
+5개 코인을 감시하다가 캔들 종가가 레벨을 돌파하면 방향·목표가·재이탈 주의선을
+알려줍니다. 마지막 검사 캔들을 상태 파일(`.breakout_state.json`)에 기록하므로
+실행 간격이 불규칙해도 돌파를 놓치거나 중복 알림하지 않습니다.
+
+돌파 없이 조용할 때 정기 리포트도 받고 싶으면 서버에서 `--report` 모드를
+사용하세요 (GitHub 스케줄은 5분 간격을 보장하지 못합니다 — deploy/DEPLOY.md 참고).
 
 ## 24시간 무료로 돌리기 (클라우드)
 
