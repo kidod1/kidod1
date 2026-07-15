@@ -24,7 +24,10 @@ import traceback
 import requests
 
 from predictor.data import fetch_klines
+from predictor.features import build_features
+from predictor.levels import find_levels, format_levels
 from predictor.model import backtest, predict_next, prepare_dataset
+from predictor.signals import advise, format_advice
 
 DEFAULT_INTERVAL = "1h"
 DEFAULT_LIMIT = 1500
@@ -39,6 +42,9 @@ HELP_TEXT = (
     "/scan [SYMBOL...] — 여러 코인 한 번에 스캔\n"
     "    예: /scan  (기본 5개 코인)\n"
     "    예: /scan BTCUSDT SOLUSDT\n"
+    "/signal SYMBOL [간격] — 종합 타이밍 판단\n"
+    "    (예측 + 지지/저항 + 매수·매도 신호)\n"
+    "/levels SYMBOL [간격] — 지지선/저항선만 빠르게\n"
     "/help — 이 도움말\n\n"
     "※ 참고용 통계 모델이며 재무적 조언이 아닙니다."
 )
@@ -118,6 +124,39 @@ def run_prediction(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> st
     )
 
 
+def run_levels(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
+    """지지선/저항선만 빠르게 조회한다 (모델 학습 없음)."""
+    ohlcv = fetch_klines(symbol, interval, limit)
+    supports, resistances = find_levels(ohlcv)
+    current = float(ohlcv["close"].iloc[-1])
+    return (f"📐 {symbol.upper()} {interval} 지지/저항선\n\n"
+            + format_levels(supports, resistances, current))
+
+
+def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
+    """예측 + 지지/저항 + 타이밍 판단을 종합한 메시지를 만든다."""
+    ohlcv = fetch_klines(symbol, interval, limit)
+    train, latest = prepare_dataset(ohlcv)
+    result = backtest(train, n_splits=3)
+    pred = predict_next(train, latest)
+    featured = build_features(ohlcv)
+    supports, resistances = find_levels(ohlcv)
+    advice = advise(featured, pred, supports, resistances)
+
+    prediction_part = format_prediction_message(
+        symbol.upper(), interval, pred,
+        accuracy=result.mean_accuracy, baseline=result.baseline_accuracy,
+    )
+    # 예측 메시지의 마지막 면책 문구는 종합 메시지 끝에 한 번만 두기 위해 제거
+    prediction_part = prediction_part.rsplit("\n\n※", 1)[0]
+    return "\n\n".join([
+        prediction_part,
+        format_levels(supports, resistances, pred.last_close),
+        format_advice(advice),
+        "※ 참고용이며 재무적 조언이 아닙니다.",
+    ])
+
+
 def scan_symbols(
     symbols: list[str],
     interval: str = DEFAULT_INTERVAL,
@@ -173,6 +212,21 @@ def handle_command(text: str) -> str:
     if cmd == "/scan":
         symbols = [p.upper() for p in parts[1:]] or DEFAULT_WATCHLIST
         return scan_symbols(symbols)
+
+    if cmd in ("/signal", "/levels"):
+        if len(parts) < 2:
+            return f"심볼을 입력해주세요. 예: {cmd} BTCUSDT 1h"
+        symbol = parts[1].upper()
+        interval = parts[2] if len(parts) > 2 else DEFAULT_INTERVAL
+        runner = run_signal if cmd == "/signal" else run_levels
+        try:
+            return runner(symbol, interval)
+        except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 400:
+                return f"'{symbol}' 심볼 또는 '{interval}' 간격이 올바르지 않습니다."
+            return f"바이낸스 API 오류: {exc}"
+        except Exception as exc:  # noqa: BLE001
+            return f"조회 실패: {exc}"
 
     return HELP_TEXT
 
@@ -245,7 +299,7 @@ def main() -> int:
                         + HELP_TEXT,
                     )
                     continue
-                if text.strip().lower().startswith(("/predict", "/scan")):
+                if text.strip().lower().startswith(("/predict", "/scan", "/signal")):
                     tg.send_message(chat_id, "분석 중입니다... (10~30초 소요) ⏳")
                 tg.send_message(chat_id, handle_command(text))
 

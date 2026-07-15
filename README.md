@@ -22,6 +22,13 @@ python main.py --symbol ETHUSDT --interval 15m --limit 3000
 python main.py --no-backtest
 ```
 
+### 출력에 포함되는 것
+
+- 다음 캔들 상승/하락 확률과 백테스트 정확도
+- **지지선/저항선**: 스윙 고점·저점을 클러스터링해 터치 횟수(강도)와 현재가 대비 거리 표시
+- **매수/매도 타이밍 판단**: 모델 확률 + RSI + MACD 교차 + 볼린저밴드 + 지지/저항 근접을
+  점수로 합산해 5단계(강한 매수~강한 매도)와 근거 목록 제시
+
 ## 매매 전략 백테스트
 
 "예측대로 매매했다면 수익이 났을까?"를 워크포워드(항상 과거로만 학습) 방식으로
@@ -75,6 +82,8 @@ TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_CHAT_ID=987654321 \
 - `/predict ETHUSDT 15m` — 캔들 간격 지정
 - `/scan` — 기본 5개 코인(BTC/ETH/SOL/XRP/BNB) 일괄 스캔 요약
 - `/scan BTCUSDT SOLUSDT` — 원하는 코인만 스캔
+- `/signal BTCUSDT` — 종합 타이밍 판단 (예측 + 지지/저항 + 매수·매도 신호)
+- `/levels BTCUSDT` — 지지선/저항선만 빠르게 조회
 - `/help` — 도움말
 
 자동 알림에서 확신이 높은 신호만 받으려면 `--min-confidence` 를 사용하세요:

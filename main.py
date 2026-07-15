@@ -11,7 +11,10 @@ import argparse
 import sys
 
 from predictor.data import fetch_klines
+from predictor.features import build_features
+from predictor.levels import find_levels, format_levels
 from predictor.model import backtest, predict_next, prepare_dataset
+from predictor.signals import advise, format_advice
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,8 +69,18 @@ def main() -> int:
     print(f"  하락 확률      : {pred.prob_down:.1%}")
     print(f"  판단           : {pred.direction} 우세")
     print("=" * 52)
-    print("  ※ 참고용 통계 모델입니다. 투자 손실에 대한 책임은")
-    print("    본인에게 있으며, 재무적 조언이 아닙니다.")
+
+    # 지지/저항선 + 타이밍 판단
+    supports, resistances = find_levels(ohlcv)
+    featured = build_features(ohlcv)
+    advice = advise(featured, pred, supports, resistances)
+    print()
+    print(format_levels(supports, resistances, pred.last_close))
+    print()
+    print(format_advice(advice))
+    print()
+    print("※ 참고용 통계 모델입니다. 투자 손실에 대한 책임은")
+    print("  본인에게 있으며, 재무적 조언이 아닙니다.")
     return 0
 
 
