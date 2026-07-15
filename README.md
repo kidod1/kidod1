@@ -62,6 +62,16 @@ TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_CHAT_ID=987654321 \
 - `/predict ETHUSDT 15m` — 캔들 간격 지정
 - `/help` — 도움말
 
+## 24시간 무료로 돌리기 (클라우드)
+
+- **GitHub Actions (추천 시작점)** — 저장소에 포함된 `.github/workflows/predict.yml` 이
+  매시간 예측을 텔레그램으로 보내줍니다. 저장소 Secrets에 `TELEGRAM_BOT_TOKEN` 과
+  `TELEGRAM_CHAT_ID` 만 등록하면 끝. 서버가 필요 없습니다.
+- **Oracle Cloud 무료 VM** — 실시간 `/predict` 조회까지 하려면 무료 서버에
+  `deploy/setup.sh` 한 번 실행으로 설치됩니다.
+
+자세한 단계는 [deploy/DEPLOY.md](deploy/DEPLOY.md) 를 참고하세요.
+
 ## 동작 원리
 
 1. **데이터 수집** (`predictor/data.py`) — `/api/v3/klines` 공개 엔드포인트에서

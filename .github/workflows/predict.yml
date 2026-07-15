@@ -1,0 +1,39 @@
+# 매시간 바이낸스 예측을 실행해 텔레그램으로 전송하는 워크플로.
+#
+# 사용 전 준비 (GitHub 저장소 → Settings → Secrets and variables → Actions):
+#   - Secret  TELEGRAM_BOT_TOKEN : @BotFather 에게 받은 봇 토큰
+#   - Secret  TELEGRAM_CHAT_ID   : 봇에게 /start 를 보내면 알려주는 chat id
+#
+# 심볼/간격을 바꾸려면 아래 run 단계의 --symbols / --interval 을 수정하세요.
+# Actions 탭에서 "Run workflow" 버튼으로 수동 실행도 가능합니다.
+
+name: Hourly prediction
+
+on:
+  schedule:
+    - cron: "5 * * * *"  # 매시 5분 (정각은 GitHub 스케줄 혼잡으로 지연이 잦음)
+  workflow_dispatch: {}
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run prediction and send to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # GitHub 러너는 대부분 미국 IP라 api.binance.com이 451로 차단됨.
+          # 공개 시세 전용 미러 엔드포인트를 사용한다.
+          BINANCE_BASE_URL: https://data-api.binance.vision
+        run: python notify.py --symbols BTCUSDT ETHUSDT --interval 1h

@@ -7,12 +7,15 @@ API 키 없이 사용 가능한 공개 엔드포인트(/api/v3/klines)를 사용
 
 from __future__ import annotations
 
+import os
 import time
 
 import pandas as pd
 import requests
 
-BASE_URL = "https://api.binance.com"
+# 미국 IP 등에서 api.binance.com이 지역 차단(HTTP 451)될 경우
+# BINANCE_BASE_URL=https://data-api.binance.vision 으로 우회할 수 있다.
+BASE_URL = os.environ.get("BINANCE_BASE_URL", "https://api.binance.com")
 KLINES_ENDPOINT = "/api/v3/klines"
 MAX_PER_REQUEST = 1000
 
