@@ -70,10 +70,17 @@ def main() -> int:
     print(f"  판단           : {pred.direction} 우세")
     print("=" * 52)
 
-    # 지지/저항선 + 타이밍 판단
+    # 지지/저항선 + 타이밍 판단 (상위 시간대 추세 포함)
+    from predictor.signals import higher_timeframes, trend_direction
+    htf_trends = {}
+    for itv in higher_timeframes(args.interval):
+        try:
+            htf_trends[itv] = trend_direction(fetch_klines(args.symbol, itv, 200))
+        except Exception:  # noqa: BLE001
+            pass
     supports, resistances = find_levels(ohlcv)
     featured = build_features(ohlcv)
-    advice = advise(featured, pred, supports, resistances)
+    advice = advise(featured, pred, supports, resistances, htf_trends=htf_trends)
     print()
     print(format_levels(supports, resistances, pred.last_close))
     print()
