@@ -7,8 +7,10 @@
 #   TELEGRAM_BOT_TOKEN=123:abc TELEGRAM_CHAT_ID=987654321 bash setup.sh
 #
 # 옵션 (환경변수):
-#   WATCH_SYMBOLS  자동 알림 심볼 목록 (기본: "BTCUSDT ETHUSDT")
-#   WATCH_EVERY    자동 알림 주기 초 (기본: 3600)
+#   WATCH_SYMBOLS  자동 알림 심볼 목록 (기본: "BTCUSDT ETHUSDT SOLUSDT XRPUSDT BNBUSDT")
+#   WATCH_EVERY    자동 알림 주기 초 (기본: 300 = 5분)
+#   WATCH_MODE     report = 종합 리포트 한 장 (기본)
+#                  signals = 개별 강한 신호만 (확률 60% 이상)
 
 set -euo pipefail
 
@@ -19,8 +21,15 @@ if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_CHAT_ID:-}" ]]; then
 fi
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WATCH_SYMBOLS="${WATCH_SYMBOLS:-BTCUSDT ETHUSDT}"
-WATCH_EVERY="${WATCH_EVERY:-3600}"
+WATCH_SYMBOLS="${WATCH_SYMBOLS:-BTCUSDT ETHUSDT SOLUSDT XRPUSDT BNBUSDT}"
+WATCH_EVERY="${WATCH_EVERY:-300}"
+WATCH_MODE="${WATCH_MODE:-report}"
+
+if [[ "$WATCH_MODE" == "report" ]]; then
+    MODE_FLAGS="--report"
+else
+    MODE_FLAGS="--min-confidence 0.6"
+fi
 
 echo "[1/4] 시스템 패키지 설치..."
 sudo apt-get update -qq
@@ -49,7 +58,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
 EnvironmentFile=$APP_DIR/.env
-ExecStart=$APP_DIR/.venv/bin/python bot.py --watch $WATCH_SYMBOLS --every $WATCH_EVERY
+ExecStart=$APP_DIR/.venv/bin/python bot.py --watch $WATCH_SYMBOLS --every $WATCH_EVERY $MODE_FLAGS
 Restart=always
 RestartSec=10
 
