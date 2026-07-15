@@ -36,6 +36,32 @@ python main.py --no-backtest
 ====================================================
 ```
 
+## 텔레그램 봇 (휴대폰에서 받아보기)
+
+이 프로그램은 PC/서버에서 실행되지만, 텔레그램 봇을 통해 휴대폰으로 결과를 받아볼 수 있습니다.
+
+1. 텔레그램에서 **@BotFather** 에게 `/newbot` 을 보내 봇을 만들고 토큰을 받습니다.
+2. 봇을 실행합니다:
+
+```bash
+# 대화형 모드: 텔레그램에서 명령을 보내 조회
+TELEGRAM_BOT_TOKEN=123456:ABC... python bot.py
+```
+
+3. 텔레그램에서 자기 봇에게 `/start` 를 보내면 chat id를 알려줍니다.
+4. 자동 예측 알림을 받으려면:
+
+```bash
+# 1시간마다 BTCUSDT, ETHUSDT 예측을 자동 전송
+TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_CHAT_ID=987654321 \
+    python bot.py --watch BTCUSDT ETHUSDT --every 3600
+```
+
+**봇 명령어:**
+- `/predict BTCUSDT` — 1시간봉 기준 예측
+- `/predict ETHUSDT 15m` — 캔들 간격 지정
+- `/help` — 도움말
+
 ## 동작 원리
 
 1. **데이터 수집** (`predictor/data.py`) — `/api/v3/klines` 공개 엔드포인트에서
