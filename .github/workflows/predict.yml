@@ -11,11 +11,17 @@ name: Hourly prediction
 
 on:
   schedule:
-    - cron: "5 * * * *"  # 매시 5분 (정각은 GitHub 스케줄 혼잡으로 지연이 잦음)
+    - cron: "5 * * * *"   # 매시 5분: 강한 신호(60% 이상)만 알림
+    - cron: "35 0 * * *"  # 매일 00:35 UTC (한국 09:35): 전체 요약
   workflow_dispatch: {}
 
+env:
+  SYMBOLS: BTCUSDT ETHUSDT SOLUSDT XRPUSDT BNBUSDT
+
 jobs:
-  predict:
+  # 매시간: 확률 60% 이상인 강한 신호만 상세 알림 (없으면 조용히 넘어감)
+  strong-signals:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '5 * * * *'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,11 +35,34 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run prediction and send to Telegram
+      - name: Scan and send strong signals
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # GitHub 러너는 대부분 미국 IP라 api.binance.com이 451로 차단됨.
           # 공개 시세 전용 미러 엔드포인트를 사용한다.
           BINANCE_BASE_URL: https://data-api.binance.vision
-        run: python notify.py --symbols BTCUSDT ETHUSDT --interval 1h
+        run: python notify.py --symbols $SYMBOLS --interval 1h --min-confidence 0.6
+
+  # 매일 아침: 전체 코인 요약 한 장
+  daily-digest:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '35 0 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send daily digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BINANCE_BASE_URL: https://data-api.binance.vision
+        run: python notify.py --symbols $SYMBOLS --interval 1h --digest --min-confidence 0.6

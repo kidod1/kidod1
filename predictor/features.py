@@ -37,20 +37,24 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     close = out["close"]
 
-    # 수익률 계열
+    # 수익률 계열 (단기 + 장기 호라이즌)
     out["return_1"] = close.pct_change()
     out["return_3"] = close.pct_change(3)
     out["return_6"] = close.pct_change(6)
     out["return_12"] = close.pct_change(12)
+    out["return_24"] = close.pct_change(24)
+    out["return_72"] = close.pct_change(72)
 
-    # 이동평균 대비 위치 (추세)
-    for period in (7, 25, 99):
+    # 이동평균 대비 위치 (추세; 200은 장기 추세 대용)
+    for period in (7, 25, 99, 200):
         sma = close.rolling(period).mean()
         out[f"close_vs_sma{period}"] = close / sma - 1
 
-    # 변동성
+    # 변동성 (단기/중기 + 변동성 국면 전환)
     out["volatility_12"] = out["return_1"].rolling(12).std()
     out["volatility_24"] = out["return_1"].rolling(24).std()
+    out["volatility_72"] = out["return_1"].rolling(72).std()
+    out["vol_regime"] = out["volatility_12"] / out["volatility_72"].replace(0, np.nan)
 
     # 캔들 모양
     body = (out["close"] - out["open"]).abs()
@@ -59,8 +63,17 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["upper_wick"] = (out["high"] - out[["open", "close"]].max(axis=1)) / candle_range
     out["lower_wick"] = (out[["open", "close"]].min(axis=1) - out["low"]) / candle_range
 
-    # RSI
+    # RSI (단기 + 장기 호라이즌)
     out["rsi_14"] = rsi(close, 14)
+    out["rsi_56"] = rsi(close, 56)
+
+    # 시간대 주기성 (암호화폐는 요일/시간대 패턴이 존재)
+    hour = out["open_time"].dt.hour
+    dow = out["open_time"].dt.dayofweek
+    out["hour_sin"] = np.sin(2 * np.pi * hour / 24)
+    out["hour_cos"] = np.cos(2 * np.pi * hour / 24)
+    out["dow_sin"] = np.sin(2 * np.pi * dow / 7)
+    out["dow_cos"] = np.cos(2 * np.pi * dow / 7)
 
     # MACD (가격 스케일에 의존하지 않도록 종가로 정규화)
     macd_line, signal_line, hist = macd(close)
@@ -82,16 +95,19 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     # 타깃: 다음 캔들 종가가 오르면 1, 내리면 0
     out["target"] = (close.shift(-1) > close).astype(float)
     out.loc[out.index[-1], "target"] = np.nan
+    # 다음 캔들 수익률 (매매 전략 백테스트용; 학습 피처로는 사용하지 않음)
+    out["forward_return"] = close.shift(-1) / close - 1
 
     return out
 
 
 FEATURE_COLUMNS = [
-    "return_1", "return_3", "return_6", "return_12",
-    "close_vs_sma7", "close_vs_sma25", "close_vs_sma99",
-    "volatility_12", "volatility_24",
+    "return_1", "return_3", "return_6", "return_12", "return_24", "return_72",
+    "close_vs_sma7", "close_vs_sma25", "close_vs_sma99", "close_vs_sma200",
+    "volatility_12", "volatility_24", "volatility_72", "vol_regime",
     "body_ratio", "upper_wick", "lower_wick",
-    "rsi_14", "macd", "macd_signal", "macd_hist",
+    "rsi_14", "rsi_56", "macd", "macd_signal", "macd_hist",
     "bb_position", "bb_width",
     "volume_ratio", "taker_buy_ratio",
+    "hour_sin", "hour_cos", "dow_sin", "dow_cos",
 ]

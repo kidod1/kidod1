@@ -49,8 +49,8 @@ def test_features():
     assert all(col in featured.columns for col in FEATURE_COLUMNS)
     # 마지막 행의 target은 NaN (아직 다음 캔들이 없음)
     assert np.isnan(featured["target"].iloc[-1])
-    # 지표 계산 초기 구간 이후에는 NaN이 없어야 함
-    assert not featured[FEATURE_COLUMNS].iloc[120:].isna().any(axis=None)
+    # 지표 계산 초기 구간(최장 sma200 + 변동성 72) 이후에는 NaN이 없어야 함
+    assert not featured[FEATURE_COLUMNS].iloc[280:].isna().any(axis=None)
     print("test_features 통과")
 
 

@@ -22,6 +22,19 @@ python main.py --symbol ETHUSDT --interval 15m --limit 3000
 python main.py --no-backtest
 ```
 
+## 매매 전략 백테스트
+
+"예측대로 매매했다면 수익이 났을까?"를 워크포워드(항상 과거로만 학습) 방식으로
+시뮬레이션합니다. 수수료를 반영하고, 진입 임계값별로 누적 수익률·승률·최대낙폭·샤프를
+단순 보유(buy & hold)와 비교합니다.
+
+```bash
+python backtest.py --symbol BTCUSDT --interval 1h --limit 3000
+
+# 숏 포지션 허용, 수수료 조정, 임계값 직접 지정
+python backtest.py --symbol ETHUSDT --allow-short --fee 0.00075 --thresholds 0.55 0.6 0.65
+```
+
 ### 출력 예시
 
 ```
@@ -60,7 +73,20 @@ TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_CHAT_ID=987654321 \
 **봇 명령어:**
 - `/predict BTCUSDT` — 1시간봉 기준 예측
 - `/predict ETHUSDT 15m` — 캔들 간격 지정
+- `/scan` — 기본 5개 코인(BTC/ETH/SOL/XRP/BNB) 일괄 스캔 요약
+- `/scan BTCUSDT SOLUSDT` — 원하는 코인만 스캔
 - `/help` — 도움말
+
+자동 알림에서 확신이 높은 신호만 받으려면 `--min-confidence` 를 사용하세요:
+
+```bash
+# 확률 60% 이상인 신호만 알림 (그 외에는 조용함)
+python bot.py --watch BTCUSDT ETHUSDT --every 3600 --min-confidence 0.6
+```
+
+GitHub Actions 워크플로도 같은 방식으로 동작합니다:
+매시간 5개 코인을 스캔해 **강한 신호(60% 이상)만** 알림을 보내고,
+매일 한국시간 오전 9시 35분에 전체 요약을 한 장 보내줍니다.
 
 ## 24시간 무료로 돌리기 (클라우드)
 
