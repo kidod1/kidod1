@@ -28,6 +28,7 @@ from predictor.model import backtest, predict_next, prepare_dataset
 
 DEFAULT_INTERVAL = "1h"
 DEFAULT_LIMIT = 1500
+DEFAULT_WATCHLIST = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"]
 
 HELP_TEXT = (
     "사용할 수 있는 명령어:\n"
@@ -35,6 +36,9 @@ HELP_TEXT = (
     "    예: /predict BTCUSDT\n"
     "    예: /predict ETHUSDT 15m\n"
     "    간격: 1m 5m 15m 1h 4h 1d (기본 1h)\n"
+    "/scan [SYMBOL...] — 여러 코인 한 번에 스캔\n"
+    "    예: /scan  (기본 5개 코인)\n"
+    "    예: /scan BTCUSDT SOLUSDT\n"
     "/help — 이 도움말\n\n"
     "※ 참고용 통계 모델이며 재무적 조언이 아닙니다."
 )
@@ -96,16 +100,50 @@ def format_prediction_message(
     return "\n".join(lines)
 
 
-def run_prediction(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
-    """데이터 수집→학습→예측을 수행하고 결과 메시지를 반환한다."""
+def analyze_symbol(symbol: str, interval: str, limit: int = DEFAULT_LIMIT):
+    """데이터 수집→학습→예측을 수행하고 (예측, 백테스트 결과)를 반환한다."""
     ohlcv = fetch_klines(symbol, interval, limit)
     train, latest = prepare_dataset(ohlcv)
     result = backtest(train, n_splits=3)
     pred = predict_next(train, latest)
+    return pred, result
+
+
+def run_prediction(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
+    """데이터 수집→학습→예측을 수행하고 결과 메시지를 반환한다."""
+    pred, result = analyze_symbol(symbol, interval, limit)
     return format_prediction_message(
         symbol.upper(), interval, pred,
         accuracy=result.mean_accuracy, baseline=result.baseline_accuracy,
     )
+
+
+def scan_symbols(
+    symbols: list[str],
+    interval: str = DEFAULT_INTERVAL,
+    min_confidence: float = 0.0,
+    limit: int = DEFAULT_LIMIT,
+) -> str:
+    """여러 심볼을 스캔해 한 장의 요약 메시지를 만든다.
+
+    min_confidence가 0보다 크면 그 이상 확신하는 신호에 🔥 표시를 붙인다.
+    """
+    lines = [f"🔍 스캔 결과 ({interval} 캔들 기준)", ""]
+    for symbol in symbols:
+        try:
+            pred, result = analyze_symbol(symbol, interval, limit)
+        except Exception as exc:  # noqa: BLE001
+            lines.append(f"  {symbol.upper()}: 조회 실패 ({exc})")
+            continue
+        confidence = max(pred.prob_up, pred.prob_down)
+        arrow = "📈" if pred.prob_up >= 0.5 else "📉"
+        strong = " 🔥" if min_confidence > 0 and confidence >= min_confidence else ""
+        lines.append(
+            f"  {arrow} {symbol.upper()}: {pred.direction} {confidence:.1%}"
+            f" (정확도 {result.mean_accuracy:.0%}/기준 {result.baseline_accuracy:.0%}){strong}"
+        )
+    lines += ["", "※ 참고용이며 재무적 조언이 아닙니다."]
+    return "\n".join(lines)
 
 
 def handle_command(text: str) -> str:
@@ -132,6 +170,10 @@ def handle_command(text: str) -> str:
         except Exception as exc:  # noqa: BLE001
             return f"예측 실패: {exc}"
 
+    if cmd == "/scan":
+        symbols = [p.upper() for p in parts[1:]] or DEFAULT_WATCHLIST
+        return scan_symbols(symbols)
+
     return HELP_TEXT
 
 
@@ -147,6 +189,9 @@ def main() -> int:
                         help="자동 예측에 사용할 캔들 간격 (기본: 1h)")
     parser.add_argument("--every", type=int, default=3600,
                         help="자동 예측 주기(초, 기본 3600)")
+    parser.add_argument("--min-confidence", type=float, default=0.0,
+                        help="자동 예측에서 이 확률 이상 확신할 때만 알림 전송 "
+                             "(예: 0.6 — 기본 0.0은 항상 전송)")
     args = parser.parse_args()
 
     if not args.token:
@@ -169,10 +214,18 @@ def main() -> int:
             if next_push is not None and time.time() >= next_push:
                 for symbol in args.watch:
                     try:
-                        msg = run_prediction(symbol, args.watch_interval)
+                        pred, result = analyze_symbol(symbol, args.watch_interval)
                     except Exception as exc:  # noqa: BLE001
-                        msg = f"{symbol} 자동 예측 실패: {exc}"
-                    tg.send_message(args.chat_id, msg)
+                        tg.send_message(args.chat_id, f"{symbol} 자동 예측 실패: {exc}")
+                        continue
+                    confidence = max(pred.prob_up, pred.prob_down)
+                    if confidence < args.min_confidence:
+                        continue  # 확신이 낮은 신호는 조용히 넘어감
+                    tg.send_message(args.chat_id, format_prediction_message(
+                        symbol.upper(), args.watch_interval, pred,
+                        accuracy=result.mean_accuracy,
+                        baseline=result.baseline_accuracy,
+                    ))
                 next_push = time.time() + args.every
 
             # 2) 사용자 명령 처리 (long polling)
@@ -192,7 +245,7 @@ def main() -> int:
                         + HELP_TEXT,
                     )
                     continue
-                if text.strip().lower().startswith("/predict"):
+                if text.strip().lower().startswith(("/predict", "/scan")):
                     tg.send_message(chat_id, "분석 중입니다... (10~30초 소요) ⏳")
                 tg.send_message(chat_id, handle_command(text))
 
