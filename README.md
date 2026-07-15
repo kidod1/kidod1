@@ -84,18 +84,22 @@ TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_CHAT_ID=987654321 \
 - `/scan BTCUSDT SOLUSDT` — 원하는 코인만 스캔
 - `/signal BTCUSDT` — 종합 타이밍 판단 (예측 + 지지/저항 + 매수·매도 신호)
 - `/levels BTCUSDT` — 지지선/저항선만 빠르게 조회
+- `/report` — 전체 코인 종합 리포트 한 장 (예측+지지/저항+판단 요약)
 - `/help` — 도움말
 
-자동 알림에서 확신이 높은 신호만 받으려면 `--min-confidence` 를 사용하세요:
+자동 알림 모드 두 가지:
 
 ```bash
-# 확률 60% 이상인 신호만 알림 (그 외에는 조용함)
+# 5분마다 종합 리포트 한 장 (예측+지지/저항+판단)
+python bot.py --watch BTCUSDT ETHUSDT --every 300 --report
+
+# 확률 60% 이상인 강한 신호만 개별 알림 (그 외에는 조용함)
 python bot.py --watch BTCUSDT ETHUSDT --every 3600 --min-confidence 0.6
 ```
 
-GitHub Actions 워크플로도 같은 방식으로 동작합니다:
-매시간 5개 코인을 스캔해 **강한 신호(60% 이상)만** 알림을 보내고,
-매일 한국시간 오전 9시 35분에 전체 요약을 한 장 보내줍니다.
+GitHub Actions 워크플로는 **5분마다 5개 코인의 종합 리포트**를 전송합니다.
+알림이 너무 잦으면 `.github/workflows/predict.yml` 의 cron 한 줄만 바꾸면 됩니다
+(`*/15 * * * *` = 15분, `5 * * * *` = 매시간).
 
 ## 24시간 무료로 돌리기 (클라우드)
 

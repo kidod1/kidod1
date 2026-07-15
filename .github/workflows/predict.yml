@@ -7,21 +7,21 @@
 # 심볼/간격을 바꾸려면 아래 run 단계의 --symbols / --interval 을 수정하세요.
 # Actions 탭에서 "Run workflow" 버튼으로 수동 실행도 가능합니다.
 
-name: Hourly prediction
+name: Prediction report
 
 on:
   schedule:
-    - cron: "5 * * * *"   # 매시 5분: 강한 신호(60% 이상)만 알림
-    - cron: "35 0 * * *"  # 매일 00:35 UTC (한국 09:35): 전체 요약
+    # 5분마다 종합 리포트 (예측 + 지지/저항 + 타이밍 판단).
+    # 주의: GitHub 스케줄은 혼잡 시 몇 분 지연되거나 일부 회차가 건너뛰어질 수 있음.
+    # 알림이 너무 잦으면 "*/15 * * * *" (15분) 또는 "5 * * * *" (매시간) 으로 바꾸세요.
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 env:
   SYMBOLS: BTCUSDT ETHUSDT SOLUSDT XRPUSDT BNBUSDT
 
 jobs:
-  # 매시간: 확률 60% 이상인 강한 신호만 상세 알림 (없으면 조용히 넘어감)
-  strong-signals:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '5 * * * *'
+  report:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,34 +35,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Scan and send strong signals
+      - name: Send full report to Telegram
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           # GitHub 러너는 대부분 미국 IP라 api.binance.com이 451로 차단됨.
           # 공개 시세 전용 미러 엔드포인트를 사용한다.
           BINANCE_BASE_URL: https://data-api.binance.vision
-        run: python notify.py --symbols $SYMBOLS --interval 1h --min-confidence 0.6
-
-  # 매일 아침: 전체 코인 요약 한 장
-  daily-digest:
-    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '35 0 * * *'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Send daily digest
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BINANCE_BASE_URL: https://data-api.binance.vision
-        run: python notify.py --symbols $SYMBOLS --interval 1h --digest --min-confidence 0.6
+        run: python notify.py --symbols $SYMBOLS --interval 1h --report

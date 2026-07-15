@@ -22,7 +22,13 @@ import argparse
 import os
 import sys
 
-from bot import TelegramClient, analyze_symbol, format_prediction_message, scan_symbols
+from bot import (
+    TelegramClient,
+    analyze_symbol,
+    format_prediction_message,
+    full_report,
+    scan_symbols,
+)
 
 
 def main() -> int:
@@ -36,6 +42,8 @@ def main() -> int:
                         help="이 확률 이상 확신하는 신호만 전송 (기본 0.0 = 전부 전송)")
     parser.add_argument("--digest", action="store_true",
                         help="개별 메시지 대신 전체 요약 한 장으로 전송")
+    parser.add_argument("--report", action="store_true",
+                        help="예측+지지/저항+타이밍 판단을 담은 종합 리포트 한 장으로 전송")
     parser.add_argument("--token", default=os.environ.get("TELEGRAM_BOT_TOKEN"))
     parser.add_argument("--chat-id", default=os.environ.get("TELEGRAM_CHAT_ID"))
     args = parser.parse_args()
@@ -45,6 +53,12 @@ def main() -> int:
         return 1
 
     tg = TelegramClient(args.token)
+
+    if args.report:
+        message = full_report(args.symbols, args.interval, args.limit)
+        tg.send_message(args.chat_id, message)
+        print("종합 리포트 전송 완료")
+        return 0
 
     if args.digest:
         message = scan_symbols(args.symbols, args.interval,
