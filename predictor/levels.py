@@ -45,6 +45,34 @@ def _cluster(prices: np.ndarray, tolerance: float) -> list[list[float]]:
     return clusters
 
 
+def find_raw_levels(
+    df: pd.DataFrame,
+    window: int = 5,
+    tolerance: float = 0.005,
+    min_touches: int = 2,
+) -> list[tuple[float, int]]:
+    """현재가와 무관하게 모든 (레벨 가격, 터치 횟수)를 가격 오름차순으로 반환한다.
+
+    돌파 감지처럼 지지/저항 분류 이전의 원시 레벨이 필요할 때 사용한다.
+    """
+    if len(df) < 2 * window + 1:
+        return []
+    pivots = _find_pivot_prices(df, window)
+    if len(pivots) == 0:
+        return []
+
+    high = df["high"].to_numpy()
+    low = df["low"].to_numpy()
+    out: list[tuple[float, int]] = []
+    for cluster in _cluster(pivots, tolerance):
+        price = float(np.mean(cluster))
+        band = price * tolerance
+        touches = int(np.sum((low <= price + band) & (high >= price - band)))
+        if touches >= min_touches:
+            out.append((price, touches))
+    return out
+
+
 def find_levels(
     df: pd.DataFrame,
     window: int = 5,
@@ -64,26 +92,11 @@ def find_levels(
     Returns:
         (지지선 목록, 저항선 목록) — 각각 현재가에 가까운 순으로 정렬
     """
-    if len(df) < 2 * window + 1:
-        return [], []
-
-    current = float(df["close"].iloc[-1])
-    pivots = _find_pivot_prices(df, window)
-    if len(pivots) == 0:
-        return [], []
-
-    high = df["high"].to_numpy()
-    low = df["low"].to_numpy()
+    current = float(df["close"].iloc[-1]) if len(df) else 0.0
 
     supports: list[Level] = []
     resistances: list[Level] = []
-    for cluster in _cluster(pivots, tolerance):
-        price = float(np.mean(cluster))
-        # 터치 = 캔들의 고가~저가 범위가 레벨의 tolerance 밴드와 겹침
-        band = price * tolerance
-        touches = int(np.sum((low <= price + band) & (high >= price - band)))
-        if touches < min_touches:
-            continue
+    for price, touches in find_raw_levels(df, window, tolerance, min_touches):
         distance = (price - current) / current
         if price < current:
             supports.append(Level(price, "지지", touches, distance))
