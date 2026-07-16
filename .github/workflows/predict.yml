@@ -1,13 +1,15 @@
-# 지지/저항 돌파 감지 알림 워크플로.
+# 암호화폐 알림 워크플로 — 실행마다 두 가지를 보낸다:
+#   1. breakout: 지지/저항 돌파 감지 (돌파가 있을 때만 알림)
+#   2. report: 5개 코인 종합 리포트 (예측 + 지지/저항 + 타이밍 판단)
 #
 # 가능한 한 자주(5분 cron) 실행을 시도하지만, GitHub 스케줄은 혼잡 시
-# 1시간 이상 지연될 수 있음. 상태 파일(.breakout_state.json)에 마지막 검사
-# 캔들을 기록해두므로 실행 간격이 불규칙해도 돌파를 놓치거나 중복 알림하지 않음
+# 1시간 이상 지연될 수 있음. 돌파는 상태 파일(.breakout_state.json)에 마지막
+# 검사 캔들을 기록해두므로 실행 간격이 불규칙해도 놓치거나 중복 알림하지 않음
 # (최대 12캔들 전까지 소급 검사).
 #
 # 필요한 Secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
 
-name: Breakout alerts
+name: Crypto alerts
 
 on:
   schedule:
@@ -58,3 +60,25 @@ jobs:
             git pull --rebase origin "${{ github.ref_name }}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
+
+  # 종합 리포트 — 실행마다 5개 코인의 예측+지지/저항+판단 요약 한 장
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send full report to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BINANCE_BASE_URL: https://data-api.binance.vision
+        run: python notify.py --symbols $SYMBOLS --interval 1h --report
