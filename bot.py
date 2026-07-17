@@ -24,10 +24,24 @@ import traceback
 import requests
 
 from predictor.data import fetch_klines
-from predictor.features import build_features
+from predictor.features import HORIZON, build_features
 from predictor.levels import find_levels, format_levels
 from predictor.model import backtest, predict_next, prepare_dataset
-from predictor.signals import advise, format_advice, higher_timeframes, trend_direction
+from predictor.scorecard import (
+    DEFAULT_LOG_FILE,
+    format_scorecard,
+    load_log,
+    record_prediction,
+    resolve_pending,
+    save_log,
+)
+from predictor.signals import (
+    INTERVAL_MINUTES,
+    advise,
+    format_advice,
+    higher_timeframes,
+    trend_direction,
+)
 
 DEFAULT_INTERVAL = "1h"
 DEFAULT_LIMIT = 1500
@@ -79,6 +93,16 @@ class TelegramClient:
         resp.raise_for_status()
 
 
+def horizon_label(interval: str, horizon: int = HORIZON) -> str:
+    """호라이즌을 사람이 읽는 시간 단위로 바꾼다 (예: 1h×4 → '4시간')."""
+    minutes = INTERVAL_MINUTES.get(interval, 60) * horizon
+    if minutes % 1440 == 0:
+        return f"{minutes // 1440}일"
+    if minutes % 60 == 0:
+        return f"{minutes // 60}시간"
+    return f"{minutes}분"
+
+
 def format_prediction_message(
     symbol: str,
     interval: str,
@@ -91,7 +115,7 @@ def format_prediction_message(
     filled = round(pred.prob_up * bar_len)
     bar = "🟩" * filled + "🟥" * (bar_len - filled)
     lines = [
-        f"📊 {symbol} — 다음 {interval} 캔들",
+        f"📊 {symbol} — 향후 {horizon_label(interval, pred.horizon)} 방향 ({interval} 캔들)",
         f"기준 시각: {pred.last_open_time:%Y-%m-%d %H:%M} UTC",
         f"현재 종가: {pred.last_close:,.4f}",
         "",
@@ -108,10 +132,17 @@ def format_prediction_message(
     return "\n".join(lines)
 
 
-def analyze_symbol(symbol: str, interval: str, limit: int = DEFAULT_LIMIT):
-    """데이터 수집→학습→예측을 수행하고 (예측, 백테스트 결과)를 반환한다."""
+def analyze_symbol(symbol: str, interval: str, limit: int = DEFAULT_LIMIT,
+                   btc_ohlcv=None):
+    """데이터 수집→학습→예측을 수행하고 (예측, 백테스트 결과)를 반환한다.
+
+    알트코인이면 BTC 동향 피처를 위해 BTCUSDT 캔들도 함께 사용한다
+    (btc_ohlcv를 넘기면 재사용, 없으면 새로 조회).
+    """
     ohlcv = fetch_klines(symbol, interval, limit)
-    train, latest = prepare_dataset(ohlcv)
+    if symbol.upper() != "BTCUSDT" and btc_ohlcv is None:
+        btc_ohlcv = fetch_klines("BTCUSDT", interval, limit)
+    train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
     result = backtest(train, n_splits=3)
     pred = predict_next(train, latest)
     return pred, result
@@ -149,7 +180,10 @@ def fetch_htf_trends(symbol: str, interval: str) -> dict[str, str]:
 def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     """예측 + 지지/저항 + 타이밍 판단을 종합한 메시지를 만든다."""
     ohlcv = fetch_klines(symbol, interval, limit)
-    train, latest = prepare_dataset(ohlcv)
+    btc_ohlcv = None
+    if symbol.upper() != "BTCUSDT":
+        btc_ohlcv = fetch_klines("BTCUSDT", interval, limit)
+    train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
     result = backtest(train, n_splits=3)
     pred = predict_next(train, latest)
     featured = build_features(ohlcv)
@@ -175,23 +209,44 @@ def full_report(
     symbols: list[str],
     interval: str = DEFAULT_INTERVAL,
     limit: int = DEFAULT_LIMIT,
+    log_path: str = DEFAULT_LOG_FILE,
 ) -> str:
-    """모든 코인의 예측·지지/저항·타이밍 판단을 한 장으로 정리한 종합 리포트."""
+    """모든 코인의 예측·지지/저항·타이밍 판단을 한 장으로 정리한 종합 리포트.
+
+    예측을 성적표 로그에 기록하고, 호라이즌이 지난 과거 예측은 실제 결과와
+    비교해 하단에 누적 적중률을 표시한다.
+    """
     from datetime import datetime, timedelta, timezone
 
     kst = datetime.now(timezone(timedelta(hours=9)))
-    blocks = [f"📋 종합 리포트 — {interval} 캔들 기준\n({kst:%m/%d %H:%M} KST)"]
+    blocks = [f"📋 종합 리포트 — {interval} 캔들 · 향후 {horizon_label(interval)} 방향\n"
+              f"({kst:%m/%d %H:%M} KST)"]
+
+    # BTC 캔들은 한 번만 받아 모든 심볼의 BTC 동향 피처에 재사용
+    try:
+        btc_ohlcv = fetch_klines("BTCUSDT", interval, limit)
+    except Exception:  # noqa: BLE001
+        btc_ohlcv = None
+
+    log = load_log(log_path)
+    ohlcv_cache: dict[str, pd.DataFrame] = {}
 
     for symbol in symbols:
         try:
-            ohlcv = fetch_klines(symbol, interval, limit)
-            train, latest = prepare_dataset(ohlcv)
+            if symbol.upper() == "BTCUSDT" and btc_ohlcv is not None:
+                ohlcv = btc_ohlcv
+            else:
+                ohlcv = fetch_klines(symbol, interval, limit)
+            ohlcv_cache[symbol.upper()] = ohlcv
+            train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
             result = backtest(train, n_splits=3)
             pred = predict_next(train, latest)
-            featured = build_features(ohlcv)
+            featured = build_features(ohlcv, btc_df=btc_ohlcv)
             supports, resistances = find_levels(ohlcv)
             htf = fetch_htf_trends(symbol, interval)
             advice = advise(featured, pred, supports, resistances, htf_trends=htf)
+            record_prediction(log, symbol, interval, pred.last_open_time,
+                              pred.last_close, pred.prob_up, pred.horizon)
         except Exception as exc:  # noqa: BLE001
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
@@ -215,6 +270,13 @@ def full_report(
         if advice.stop_loss is not None and advice.take_profit is not None:
             lines.append(f"  손절 {advice.stop_loss:,.4f} / 목표 {advice.take_profit:,.4f}")
         blocks.append("\n".join(lines))
+
+    # 성적표: 호라이즌이 지난 예측을 실제 결과와 대조하고 적중률 표시
+    resolve_pending(log, ohlcv_cache)
+    save_log(log_path, log)
+    scorecard = format_scorecard(log)
+    if scorecard:
+        blocks.append(scorecard)
 
     blocks.append("※ 참고용이며 재무적 조언이 아닙니다.")
     return "\n\n".join(blocks)
