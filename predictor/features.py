@@ -1,13 +1,20 @@
 """OHLCV 데이터에서 기술적 지표 피처를 만드는 모듈.
 
 외부 TA 라이브러리 없이 pandas만으로 계산한다.
-타깃(label)은 "다음 캔들의 종가가 현재 종가보다 높은가" (1=상승, 0=하락)이다.
+타깃(label)은 "HORIZON개 캔들 뒤 종가가 현재 종가보다 높은가" (1=상승, 0=하락)이다.
+단일 캔들보다 노이즈가 적어 예측 대상으로 더 적합하다.
+
+알트코인 예측 시 btc_df를 넘기면 비트코인 동향 피처(btc_*)가 추가된다
+(알트코인은 BTC를 따라 움직이는 경향이 강하다).
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
+# 예측 호라이즌: 앞으로 몇 개 캔들 뒤의 방향을 맞출 것인가
+HORIZON = 4
 
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
@@ -103,11 +110,21 @@ def ichimoku(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Seri
     return tenkan, kijun, senkou_a, senkou_b
 
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_features(
+    df: pd.DataFrame,
+    btc_df: pd.DataFrame | None = None,
+    horizon: int = HORIZON,
+) -> pd.DataFrame:
     """OHLCV DataFrame에 피처와 타깃 컬럼을 추가해 반환한다.
 
-    반환된 DataFrame의 마지막 행은 target이 NaN이다(다음 캔들이 아직 없으므로).
-    이 마지막 행이 "지금 예측할" 시점이다.
+    마지막 horizon개 행은 target이 NaN이다(미래 캔들이 아직 없으므로).
+    마지막 행이 "지금 예측할" 시점이다.
+
+    Args:
+        df: 대상 심볼의 OHLCV
+        btc_df: BTCUSDT의 같은 간격 OHLCV (없으면 df 자신을 사용 —
+                BTCUSDT 자체를 분석할 때와 동일한 결과)
+        horizon: 타깃 호라이즌 (캔들 수)
     """
     out = df.copy()
     close = out["close"]
@@ -192,10 +209,21 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["volume_ratio"] = out["volume"] / vol_sma.replace(0, np.nan)
     out["taker_buy_ratio"] = out["taker_buy_base"] / out["volume"].replace(0, np.nan)
 
-    # 타깃: 다음 캔들 종가가 오르면 1, 내리면 0
-    out["target"] = (close.shift(-1) > close).astype(float)
-    out.loc[out.index[-1], "target"] = np.nan
-    # 다음 캔들 수익률 (매매 전략 백테스트용; 학습 피처로는 사용하지 않음)
+    # 비트코인 동향 피처 (알트코인은 BTC를 따라가는 경향)
+    ref = btc_df if btc_df is not None else df
+    btc = ref[["open_time", "close"]].rename(columns={"close": "btc_close"})
+    out = out.merge(btc, on="open_time", how="left")
+    btc_close = out["btc_close"].ffill()
+    out["btc_return_1"] = btc_close.pct_change()
+    out["btc_return_6"] = btc_close.pct_change(6)
+    out["btc_return_24"] = btc_close.pct_change(24)
+    out["btc_vs_sma25"] = btc_close / btc_close.rolling(25).mean() - 1
+    out = out.drop(columns=["btc_close"])
+
+    # 타깃: horizon개 캔들 뒤 종가가 오르면 1, 내리면 0
+    out["target"] = (close.shift(-horizon) > close).astype(float)
+    out.iloc[-horizon:, out.columns.get_loc("target")] = np.nan
+    # 다음 1캔들 수익률 (매매 전략 백테스트용; 학습 피처로는 사용하지 않음)
     out["forward_return"] = close.shift(-1) / close - 1
 
     return out
@@ -213,4 +241,5 @@ FEATURE_COLUMNS = [
     "atr_ratio", "adx_14", "di_diff",
     "mfi_14", "obv_slope", "stoch_rsi",
     "price_vs_cloud_top", "price_vs_cloud_bottom", "tenkan_vs_kijun",
+    "btc_return_1", "btc_return_6", "btc_return_24", "btc_vs_sma25",
 ]

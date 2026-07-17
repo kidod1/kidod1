@@ -17,7 +17,7 @@ from sklearn.model_selection import TimeSeriesSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from .features import FEATURE_COLUMNS, build_features
+from .features import FEATURE_COLUMNS, HORIZON, build_features
 
 
 @dataclass
@@ -43,6 +43,7 @@ class Prediction:
     prob_down: float
     last_close: float
     last_open_time: pd.Timestamp
+    horizon: int = HORIZON  # 향후 몇 개 캔들의 방향인지
 
     @property
     def direction(self) -> str:
@@ -86,9 +87,13 @@ def _fit_calibrator(X: np.ndarray, y: np.ndarray) -> LogisticRegression | None:
     return calibrator
 
 
-def prepare_dataset(ohlcv: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def prepare_dataset(
+    ohlcv: pd.DataFrame,
+    btc_ohlcv: pd.DataFrame | None = None,
+    horizon: int = HORIZON,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """피처를 만들고 (학습용 데이터, 예측용 마지막 행)으로 나눈다."""
-    featured = build_features(ohlcv)
+    featured = build_features(ohlcv, btc_df=btc_ohlcv, horizon=horizon)
     # 지표 계산 초기 구간(NaN)이 있는 행 제거하되, 마지막 행(예측 대상)은 유지
     train = featured.iloc[:-1].dropna(subset=FEATURE_COLUMNS + ["target"])
     latest = featured.iloc[[-1]]
@@ -139,8 +144,9 @@ def walk_forward_probabilities(train: pd.DataFrame, n_splits: int = 5) -> pd.Dat
     return pd.concat(parts, ignore_index=True)
 
 
-def predict_next(train: pd.DataFrame, latest: pd.DataFrame) -> Prediction:
-    """전체 데이터로 학습한 뒤 최신 캔들의 다음 방향 확률을 예측한다.
+def predict_next(train: pd.DataFrame, latest: pd.DataFrame,
+                 horizon: int = HORIZON) -> Prediction:
+    """전체 데이터로 학습한 뒤 향후 horizon캔들의 방향 확률을 예측한다.
 
     검증 구간으로 학습한 Platt scaling 보정기가 있으면 확률을 보정해
     과신(overconfidence)을 줄인다.
@@ -158,4 +164,5 @@ def predict_next(train: pd.DataFrame, latest: pd.DataFrame) -> Prediction:
         prob_down=1 - proba_up,
         last_close=float(latest["close"].iloc[0]),
         last_open_time=latest["open_time"].iloc[0],
+        horizon=horizon,
     )

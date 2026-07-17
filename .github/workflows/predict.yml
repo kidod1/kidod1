@@ -27,9 +27,10 @@ env:
   SYMBOLS: BTCUSDT ETHUSDT SOLUSDT XRPUSDT BNBUSDT
 
 jobs:
-  breakout:
+  # 돌파 감지 → 종합 리포트(성적표 기록 포함) → 상태 저장을 한 작업에서 순서대로
+  alerts:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -49,36 +50,23 @@ jobs:
           BINANCE_BASE_URL: https://data-api.binance.vision
         run: python breakout_notify.py --symbols $SYMBOLS --interval 1h
 
-      - name: Save state (prevents duplicate alerts)
-        # 실행 중인 브랜치 기준으로 pull/push (기본 브랜치가 무엇이든 동작)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .breakout_state.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Update breakout state [skip ci]"
-            git pull --rebase origin "${{ github.ref_name }}"
-            git push origin "HEAD:${{ github.ref_name }}"
-          fi
-
-  # 종합 리포트 — 실행마다 5개 코인의 예측+지지/저항+판단 요약 한 장
-  report:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
       - name: Send full report to Telegram
+        continue-on-error: true  # 리포트가 실패해도 돌파 상태 저장은 진행
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           BINANCE_BASE_URL: https://data-api.binance.vision
         run: python notify.py --symbols $SYMBOLS --interval 1h --report
+
+      - name: Save state (prevents duplicate alerts)
+        # 실행 중인 브랜치 기준으로 pull/push (기본 브랜치가 무엇이든 동작)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .breakout_state.json .predictions_log.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "Update alert state [skip ci]"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
