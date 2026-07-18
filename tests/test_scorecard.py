@@ -70,11 +70,17 @@ def test_format_and_roundtrip():
         {"symbol": "BTCUSDT", "interval": "1h", "candle_time": "t2",
          "close": 1, "prob_up": 0.6, "horizon": 4, "actual_close": 0.5, "correct": False},
         {"symbol": "ETHUSDT", "interval": "1h", "candle_time": "t3",
-         "close": 1, "prob_up": 0.4, "horizon": 4, "actual_close": 0.9, "correct": True},
+         "close": 1, "prob_up": 0.45, "horizon": 4, "actual_close": 0.9, "correct": True},
     ]}
     text = format_scorecard(log)
     assert "2/3" in text and "67%" in text
     assert "BTCUSDT 50%" in text and "ETHUSDT 100%" in text
+    # 산정 기준 설명이 포함돼야 함
+    assert "산정 기준" in text
+    assert "향후 4캔들(1h) 방향" in text
+    assert "50% 이상인 쪽" in text
+    # 강한 신호(0.6 이상 확신) 세부: prob 0.6 두 건(적중 1) → 1/2
+    assert "확신 60% 이상 신호만: 1/2건 (50%)" in text
     assert format_scorecard({"pending": [], "resolved": []}) is None
 
     path = Path("/tmp/claude-0/-home-user-kidod1/4949cad9-14cd-5230-9187-bc26f65b6a13/scratchpad/scorecard_rt.json")
