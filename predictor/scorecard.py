@@ -106,12 +106,23 @@ def resolve_pending(log: dict, ohlcv_by_symbol: dict[str, pd.DataFrame]) -> int:
     return resolved_now
 
 
+STRONG_CONFIDENCE = 0.6  # "강한 신호"로 분류하는 확신 기준
+
+
 def format_scorecard(log: dict, last_n: int = 100) -> str | None:
-    """최근 확정 기록의 적중률 요약 문자열을 만든다 (기록이 없으면 None)."""
+    """최근 확정 기록의 적중률 요약 문자열을 만든다 (기록이 없으면 None).
+
+    숫자만 보여주지 않고 산정 기준(무엇을 예측으로 세고, 무엇을 적중으로
+    판정하는지)을 함께 표시한다. 확신 60% 이상이었던 강한 신호만 골랐을 때의
+    적중률도 따로 보여줘서 "어떤 신호를 믿을지" 판단 근거를 제공한다.
+    """
     resolved = log["resolved"][-last_n:]
     if not resolved:
         return None
     correct = sum(1 for r in resolved if r["correct"])
+    horizon = resolved[-1].get("horizon", 4)
+    interval = resolved[-1].get("interval", "1h")
+
     lines = [f"🎯 실전 적중률: {correct}/{len(resolved)}건 ({correct / len(resolved):.0%})"]
 
     by_symbol: dict[str, list[bool]] = {}
@@ -120,4 +131,22 @@ def format_scorecard(log: dict, last_n: int = 100) -> str | None:
     if len(by_symbol) > 1:
         parts = [f"{sym} {sum(v) / len(v):.0%}" for sym, v in sorted(by_symbol.items())]
         lines.append("  " + " · ".join(parts))
+
+    # 강한 신호(확신 60% 이상)만 골랐을 때의 성적
+    strong = [r for r in resolved
+              if max(r["prob_up"], 1 - r["prob_up"]) >= STRONG_CONFIDENCE]
+    if strong:
+        strong_correct = sum(1 for r in strong if r["correct"])
+        lines.append(f"  확신 {STRONG_CONFIDENCE:.0%} 이상 신호만: "
+                     f"{strong_correct}/{len(strong)}건 "
+                     f"({strong_correct / len(strong):.0%})")
+
+    lines += [
+        "",
+        "산정 기준:",
+        f"  • 리포트마다 기록된 \"향후 {horizon}캔들({interval}) 방향\" 예측 대상",
+        f"  • {horizon}캔들 뒤 실제 종가가 기록 시점 종가보다 높은지/낮은지로 판정",
+        "  • 확률 50% 이상인 쪽을 그 예측의 방향으로 간주",
+        f"  • 최근 확정된 {len(resolved)}건 집계 (최대 {last_n}건, 미확정 예측 제외)",
+    ]
     return "\n".join(lines)
