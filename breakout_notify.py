@@ -1,7 +1,7 @@
-"""지지/저항 돌파 감지 후 텔레그램 알림 — 1회 실행하고 종료한다.
+"""지지/저항 돌파 + 상위 시간대 추세 전환 감지 후 텔레그램 알림 — 1회 실행 후 종료.
 
-GitHub Actions 스케줄 실행용. 마지막으로 검사한 캔들 시각을 상태 파일에
-기록해두므로, 실행 간격이 불규칙해도 같은 돌파를 두 번 알리지 않는다.
+GitHub Actions 스케줄 실행용. 마지막으로 검사한 캔들 시각과 추세 상태를
+상태 파일에 기록해두므로, 실행 간격이 불규칙해도 같은 이벤트를 두 번 알리지 않는다.
 
 사용 예:
     TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=... \
@@ -24,8 +24,10 @@ from predictor.breakout import (
     save_state,
 )
 from predictor.data import fetch_klines
+from predictor.trendshift import check_trend_shift, format_trend_shift
 
 DEFAULT_STATE_FILE = ".breakout_state.json"
+TREND_INTERVALS = ("4h", "1d")  # 추세 전환을 감시할 상위 시간대
 
 
 def main() -> int:
@@ -75,6 +77,24 @@ def main() -> int:
             state[key] = str(last_time)
         if not events:
             print(f"{symbol}: 돌파 없음")
+
+        # 상위 시간대(4h/1d) 추세 전환 감시
+        for itv in TREND_INTERVALS:
+            trend_key = f"trend:{symbol.upper()}:{itv}"
+            try:
+                htf = fetch_klines(symbol, itv, 200)
+            except Exception as exc:  # noqa: BLE001
+                print(f"{symbol} {itv}: 추세 확인 실패 ({exc})", file=sys.stderr)
+                continue
+            shift, new_trend = check_trend_shift(
+                htf, symbol, itv, state.get(trend_key))
+            if shift is not None:
+                tg.send_message(args.chat_id, format_trend_shift(shift))
+                alerts += 1
+                print(f"{symbol} {itv}: 추세 전환 알림 전송 "
+                      f"({shift.old_trend}→{shift.new_trend})")
+            if new_trend is not None:
+                state[trend_key] = new_trend
 
     save_state(args.state_file, state)
     print(f"완료: 알림 {alerts}건, 실패 {failures}건")

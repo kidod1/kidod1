@@ -47,6 +47,32 @@ class TimingAdvice:
     reasons: list[str] = field(default_factory=list)
     stop_loss: float | None = None    # ATR 기반 손절 참고가 (매수/매도 판단일 때만)
     take_profit: float | None = None  # ATR 기반 목표 참고가
+    warning: str | None = None        # 반전 신호가 겹칠 때의 경고 문구
+
+
+def _candle_patterns(row: pd.Series, prev: pd.Series) -> tuple[bool, bool]:
+    """(약세 반전 캔들, 강세 반전 캔들) 여부를 반환한다.
+
+    약세: 하락 장악형(직전 양봉 몸통을 덮는 음봉) 또는 유성형(긴 윗꼬리)
+    강세: 상승 장악형 또는 망치형(긴 아랫꼬리)
+    """
+    body = abs(row["close"] - row["open"])
+    prev_body = abs(prev["close"] - prev["open"])
+    candle_range = max(row["high"] - row["low"], 1e-12)
+    upper_wick = row["high"] - max(row["open"], row["close"])
+    lower_wick = min(row["open"], row["close"]) - row["low"]
+
+    bearish_engulf = (row["close"] < row["open"] and prev["close"] > prev["open"]
+                      and body > prev_body
+                      and row["close"] < prev["open"] and row["open"] > prev["close"])
+    shooting_star = upper_wick > 2 * body and upper_wick / candle_range > 0.6
+
+    bullish_engulf = (row["close"] > row["open"] and prev["close"] < prev["open"]
+                      and body > prev_body
+                      and row["close"] > prev["open"] and row["open"] < prev["close"])
+    hammer = lower_wick > 2 * body and lower_wick / candle_range > 0.6
+
+    return (bearish_engulf or shooting_star), (bullish_engulf or hammer)
 
 
 def _score_to_action(score: int) -> str:
@@ -195,17 +221,53 @@ def advise(
             reasons.append(f"{itv} 추세 하락 -1")
 
     # 8) 지지/저항 근접
-    if supports and abs(supports[0].distance_pct) <= NEAR_LEVEL_PCT:
+    near_support = bool(supports and abs(supports[0].distance_pct) <= NEAR_LEVEL_PCT)
+    near_resistance = bool(resistances
+                           and abs(resistances[0].distance_pct) <= NEAR_LEVEL_PCT)
+    if near_support:
         score += 1
         reasons.append(
             f"지지선 {supports[0].price:,.4f} 근접 (터치 {supports[0].touches}회) +1")
-    if resistances and abs(resistances[0].distance_pct) <= NEAR_LEVEL_PCT:
+    if near_resistance:
         score -= 1
         reasons.append(
             f"저항선 {resistances[0].price:,.4f} 근접 (터치 {resistances[0].touches}회) -1")
 
+    # 9) 추세 전환(반전) 신호 — 다이버전스 + 반전 캔들 패턴
+    rev_bear: list[str] = []
+    rev_bull: list[str] = []
+    if row.get("bearish_divergence", 0) == 1:
+        score -= 1
+        reasons.append("약세 다이버전스 (가격 신고점인데 RSI 하락) -1")
+        rev_bear.append("약세 다이버전스")
+    if row.get("bullish_divergence", 0) == 1:
+        score += 1
+        reasons.append("강세 다이버전스 (가격 신저점인데 RSI 상승) +1")
+        rev_bull.append("강세 다이버전스")
+
+    bear_candle, bull_candle = _candle_patterns(row, prev)
+    if bear_candle and near_resistance:
+        score -= 1
+        reasons.append("저항선 부근 약세 반전 캔들 -1")
+        rev_bear.append("저항선 반전 캔들")
+    elif bear_candle:
+        rev_bear.append("약세 반전 캔들")
+    if bull_candle and near_support:
+        score += 1
+        reasons.append("지지선 부근 강세 반전 캔들 +1")
+        rev_bull.append("지지선 반전 캔들")
+    elif bull_candle:
+        rev_bull.append("강세 반전 캔들")
+
     if not reasons:
         reasons.append("뚜렷한 신호 없음")
+
+    # 반전 증거가 2개 이상 겹치면 경고 (추세 지표는 후행이라 전환점에서 늦음)
+    warning = None
+    if len(rev_bear) >= 2:
+        warning = "⚠️ 하락 반전 주의: " + " + ".join(rev_bear)
+    elif len(rev_bull) >= 2:
+        warning = "⚠️ 상승 반전 주의: " + " + ".join(rev_bull)
 
     # 매수/매도 판단이면 ATR 기반 손절가·목표가 제안
     action = _score_to_action(score)
@@ -221,14 +283,18 @@ def advise(
             take_profit = price * (1 - ATR_TARGET_MULT * atr_ratio)
 
     return TimingAdvice(action=action, score=score, reasons=reasons,
-                        stop_loss=stop_loss, take_profit=take_profit)
+                        stop_loss=stop_loss, take_profit=take_profit,
+                        warning=warning)
 
 
 def format_advice(advice: TimingAdvice) -> str:
     """타이밍 판단을 사람이 읽기 좋은 문자열로 만든다."""
     icon = {"강한 매수": "🟢🟢", "매수": "🟢", "관망": "⚪",
             "매도": "🔴", "강한 매도": "🔴🔴"}[advice.action]
-    lines = [f"{icon} 타이밍 판단: {advice.action} (점수 {advice.score:+d})", "근거:"]
+    lines = [f"{icon} 타이밍 판단: {advice.action} (점수 {advice.score:+d})"]
+    if advice.warning:
+        lines.append(advice.warning)
+    lines.append("근거:")
     lines += [f"  • {r}" for r in advice.reasons]
     if advice.stop_loss is not None and advice.take_profit is not None:
         lines += [
