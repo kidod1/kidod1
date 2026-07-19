@@ -16,6 +16,10 @@ import pandas as pd
 # 예측 호라이즌: 앞으로 몇 개 캔들 뒤의 방향을 맞출 것인가
 HORIZON = 4
 
+# 학습에서 제외할 미세 변동 기준: 호라이즌 수익률의 절대값이 이보다 작으면
+# 사실상 무방향(노이즈 라벨)이므로 학습 표본에서 뺀다
+MIN_MOVE = 0.001
+
 
 def rsi(close: pd.Series, period: int = 14) -> pd.Series:
     """RSI (Wilder 방식의 지수이동평균 사용)."""
@@ -267,6 +271,8 @@ def build_features(
     # 타깃: horizon개 캔들 뒤 종가가 오르면 1, 내리면 0
     out["target"] = (close.shift(-horizon) > close).astype(float)
     out.iloc[-horizon:, out.columns.get_loc("target")] = np.nan
+    # 호라이즌 수익률 (미세 변동 라벨 필터링용)
+    out["forward_return_h"] = close.shift(-horizon) / close - 1
     # 다음 1캔들 수익률 (매매 전략 백테스트용; 학습 피처로는 사용하지 않음)
     out["forward_return"] = close.shift(-1) / close - 1
 

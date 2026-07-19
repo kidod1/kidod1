@@ -121,7 +121,8 @@ def format_prediction_message(
         "",
         bar,
         f"상승 {pred.prob_up:.1%}  /  하락 {pred.prob_down:.1%}",
-        f"판단: {pred.direction} 우세",
+        f"판단: {pred.direction} 우세" if pred.is_confident
+        else "판단: 중립 (확신 55% 미만 — 방향 판단 유보)",
     ]
     if accuracy is not None and baseline is not None:
         lines += [
@@ -245,21 +246,34 @@ def full_report(
             supports, resistances = find_levels(ohlcv)
             htf = fetch_htf_trends(symbol, interval)
             advice = advise(featured, pred, supports, resistances, htf_trends=htf)
-            record_prediction(log, symbol, interval, pred.last_open_time,
-                              pred.last_close, pred.prob_up, pred.horizon)
+            # 확신 55% 미만(중립)은 방향 예측이 아니므로 성적표에 기록하지 않음
+            if pred.is_confident:
+                record_prediction(log, symbol, interval, pred.last_open_time,
+                                  pred.last_close, pred.prob_up, pred.horizon)
         except Exception as exc:  # noqa: BLE001
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
 
-        arrow = "📈" if pred.prob_up >= 0.5 else "📉"
-        confidence = max(pred.prob_up, pred.prob_down)
+        if pred.is_confident:
+            arrow = "📈" if pred.prob_up >= 0.5 else "📉"
+            pred_line = (f"  예측: {pred.direction} {pred.confidence:.1%}"
+                         f" (정확도 {result.mean_accuracy:.0%}"
+                         f"/기준 {result.baseline_accuracy:.0%})")
+        else:
+            arrow = "⚪"
+            pred_line = (f"  예측: 중립 — 확신 낮음 (상승 {pred.prob_up:.1%}, "
+                         f"성적표 제외)")
         lines = [
             f"{arrow} {symbol.upper()}  {pred.last_close:,.4f}",
-            f"  예측: {pred.direction} {confidence:.1%}"
-            f" (정확도 {result.mean_accuracy:.0%}/기준 {result.baseline_accuracy:.0%})",
+            pred_line,
         ]
         if htf:
             lines.append("  추세: " + " / ".join(f"{k} {v}" for k, v in htf.items()))
+            # 확신 있는 예측이 상위 시간대 추세와 정반대면 역추세 표시
+            trends = [v for v in htf.values() if v in ("상승", "하락")]
+            if (pred.is_confident and trends
+                    and all(t != pred.direction for t in trends)):
+                lines.append("  ⚠ 역추세 예측 (4h/1d 추세와 반대 — 신뢰도 낮음)")
         if supports:
             lines.append(f"  지지: {supports[0].price:,.4f} ({supports[0].distance_pct:+.1%},"
                          f" 터치 {supports[0].touches}회)")
