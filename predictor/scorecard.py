@@ -141,12 +141,17 @@ def format_scorecard(log: dict, last_n: int = 100) -> str | None:
                      f"{strong_correct}/{len(strong)}건 "
                      f"({strong_correct / len(strong):.0%})")
 
+    # 방향 편향 진단: 한쪽으로 쏠린 예측은 국면과 어긋날 때 무더기로 틀림
+    n_up = sum(1 for r in resolved if r["prob_up"] >= 0.5)
+    lines.append(f"  예측 분포: 상승 {n_up} / 하락 {len(resolved) - n_up}")
+
     lines += [
         "",
         "산정 기준:",
         f"  • 리포트마다 기록된 \"향후 {horizon}캔들({interval}) 방향\" 예측 대상",
         f"  • {horizon}캔들 뒤 실제 종가가 기록 시점 종가보다 높은지/낮은지로 판정",
         "  • 확률 50% 이상인 쪽을 그 예측의 방향으로 간주",
+        "  • 확신 55% 미만(중립) 예측은 기록·집계에서 제외",
         f"  • 최근 확정된 {len(resolved)}건 집계 (최대 {last_n}건, 미확정 예측 제외)",
     ]
     return "\n".join(lines)
