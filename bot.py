@@ -267,6 +267,8 @@ def full_report(
             lines.append(f"  저항: {resistances[0].price:,.4f} ({resistances[0].distance_pct:+.1%},"
                          f" 터치 {resistances[0].touches}회)")
         lines.append(f"  판단: {advice.action} (점수 {advice.score:+d})")
+        if advice.warning:
+            lines.append(f"  {advice.warning}")
         if advice.stop_loss is not None and advice.take_profit is not None:
             lines.append(f"  손절 {advice.stop_loss:,.4f} / 목표 {advice.take_profit:,.4f}")
         blocks.append("\n".join(lines))

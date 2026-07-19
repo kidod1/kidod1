@@ -94,6 +94,45 @@ def stoch_rsi(close: pd.Series, period: int = 14) -> pd.Series:
     return (r - lo) / (hi - lo).replace(0, np.nan)
 
 
+def divergence_flags(
+    df: pd.DataFrame,
+    rsi_series: pd.Series,
+    window: int = 3,
+    hold: int = 6,
+) -> tuple[pd.Series, pd.Series]:
+    """(약세 다이버전스, 강세 다이버전스) 플래그 시리즈를 반환한다.
+
+    약세: 가격은 직전 스윙 고점보다 높은 고점인데 RSI는 더 낮음 → 상승 동력 약화
+    강세: 가격은 직전 스윙 저점보다 낮은 저점인데 RSI는 더 높음 → 하락 동력 약화
+
+    스윙 피벗은 좌우 window개 캔들이 지나야 확정되므로, 신호는 피벗 확정
+    시점(피벗 + window 캔들)부터 hold개 캔들 동안 켜진다 (미래 정보 누수 없음).
+    """
+    size = 2 * window + 1
+    high, low = df["high"], df["low"]
+    pivot_high = (high == high.rolling(size, center=True).max()).fillna(False)
+    pivot_low = (low == low.rolling(size, center=True).min()).fillna(False)
+
+    bear = np.zeros(len(df))
+    bull = np.zeros(len(df))
+
+    ph_idx = np.flatnonzero(pivot_high.to_numpy())
+    for prev, cur in zip(ph_idx, ph_idx[1:]):
+        if high.iloc[cur] > high.iloc[prev] and \
+                rsi_series.iloc[cur] < rsi_series.iloc[prev]:
+            start = cur + window  # 피벗 확정 시점
+            bear[start:start + hold] = 1
+
+    pl_idx = np.flatnonzero(pivot_low.to_numpy())
+    for prev, cur in zip(pl_idx, pl_idx[1:]):
+        if low.iloc[cur] < low.iloc[prev] and \
+                rsi_series.iloc[cur] > rsi_series.iloc[prev]:
+            start = cur + window
+            bull[start:start + hold] = 1
+
+    return pd.Series(bear, index=df.index), pd.Series(bull, index=df.index)
+
+
 def ichimoku(df: pd.DataFrame) -> tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
     """일목균형표 — (전환선, 기준선, 선행스팬A, 선행스팬B)를 반환한다.
 
@@ -209,6 +248,11 @@ def build_features(
     out["volume_ratio"] = out["volume"] / vol_sma.replace(0, np.nan)
     out["taker_buy_ratio"] = out["taker_buy_base"] / out["volume"].replace(0, np.nan)
 
+    # 다이버전스 — 추세 전환의 선행 신호
+    bear_div, bull_div = divergence_flags(out, out["rsi_14"])
+    out["bearish_divergence"] = bear_div
+    out["bullish_divergence"] = bull_div
+
     # 비트코인 동향 피처 (알트코인은 BTC를 따라가는 경향)
     ref = btc_df if btc_df is not None else df
     btc = ref[["open_time", "close"]].rename(columns={"close": "btc_close"})
@@ -242,4 +286,5 @@ FEATURE_COLUMNS = [
     "mfi_14", "obv_slope", "stoch_rsi",
     "price_vs_cloud_top", "price_vs_cloud_bottom", "tenkan_vs_kijun",
     "btc_return_1", "btc_return_6", "btc_return_24", "btc_vs_sma25",
+    "bearish_divergence", "bullish_divergence",
 ]
