@@ -48,12 +48,26 @@ def record_prediction(
     close: float,
     prob_up: float,
     horizon: int,
+    with_trend: bool | None = None,
 ) -> bool:
-    """예측 하나를 기록한다. 같은 캔들에 대한 중복 기록은 건너뛴다(False 반환)."""
-    key = (symbol.upper(), interval, str(candle_time))
+    """예측 하나를 기록한다 (기록되면 True).
+
+    직전 기록의 호라이즌 구간과 겹치는 예측은 건너뛴다 — 매시간 "향후 4시간"을
+    기록하면 이웃 예측끼리 3/4가 겹쳐 사실상 같은 베팅의 복사본이 되고,
+    적중률 통계가 왜곡된다. 심볼당 호라이즌마다 1건씩 독립 베팅만 남긴다.
+
+    Args:
+        with_trend: 예측 방향이 상위 시간대 추세와 일치하는지
+                    (True=순응, False=역추세, None=판단 불가/혼조)
+    """
+    new_time = pd.Timestamp(candle_time)
+    window = pd.Timedelta(minutes=INTERVAL_MINUTES.get(interval, 60) * horizon)
     for entry in log["pending"] + log["resolved"]:
-        if (entry["symbol"], entry["interval"], entry["candle_time"]) == key:
-            return False
+        if entry["symbol"] != symbol.upper() or entry["interval"] != interval:
+            continue
+        gap = abs(new_time - pd.Timestamp(entry["candle_time"]))
+        if gap < window:
+            return False  # 직전 예측의 호라이즌 구간과 겹침
     log["pending"].append({
         "symbol": symbol.upper(),
         "interval": interval,
@@ -61,6 +75,7 @@ def record_prediction(
         "close": close,
         "prob_up": round(prob_up, 4),
         "horizon": horizon,
+        "with_trend": with_trend,
     })
     return True
 
@@ -145,6 +160,16 @@ def format_scorecard(log: dict, last_n: int = 100) -> str | None:
     n_up = sum(1 for r in resolved if r["prob_up"] >= 0.5)
     lines.append(f"  예측 분포: 상승 {n_up} / 하락 {len(resolved) - n_up}")
 
+    # 추세 순응 vs 역추세 분리 집계 — 어느 쪽 신호를 믿을지 판단 근거
+    aligned = [r for r in resolved if r.get("with_trend") is True]
+    counter = [r for r in resolved if r.get("with_trend") is False]
+    if aligned:
+        a = sum(1 for r in aligned if r["correct"])
+        lines.append(f"  추세 순응 예측: {a}/{len(aligned)}건 ({a / len(aligned):.0%})")
+    if counter:
+        c2 = sum(1 for r in counter if r["correct"])
+        lines.append(f"  역추세 예측: {c2}/{len(counter)}건 ({c2 / len(counter):.0%})")
+
     lines += [
         "",
         "산정 기준:",
@@ -152,6 +177,7 @@ def format_scorecard(log: dict, last_n: int = 100) -> str | None:
         f"  • {horizon}캔들 뒤 실제 종가가 기록 시점 종가보다 높은지/낮은지로 판정",
         "  • 확률 50% 이상인 쪽을 그 예측의 방향으로 간주",
         "  • 확신 55% 미만(중립) 예측은 기록·집계에서 제외",
+        f"  • 심볼당 {horizon}캔들에 1건씩 독립 예측만 기록 (구간 겹침 배제)",
         f"  • 최근 확정된 {len(resolved)}건 집계 (최대 {last_n}건, 미확정 예측 제외)",
     ]
     return "\n".join(lines)

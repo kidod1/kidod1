@@ -27,8 +27,15 @@ def test_record_and_dedupe():
     t = pd.Timestamp("2026-07-16 09:00:00+00:00")
     assert record_prediction(log, "BTCUSDT", "1h", t, 100.0, 0.62, 4) is True
     assert record_prediction(log, "BTCUSDT", "1h", t, 100.0, 0.62, 4) is False  # 중복
-    assert record_prediction(log, "ETHUSDT", "1h", t, 50.0, 0.45, 4) is True
-    assert len(log["pending"]) == 2
+    assert record_prediction(log, "ETHUSDT", "1h", t, 50.0, 0.45, 4) is True  # 다른 심볼
+    # 호라이즌(4캔들) 구간과 겹치는 예측은 건너뜀 — 독립 베팅만 기록
+    assert record_prediction(log, "BTCUSDT", "1h",
+                             t + pd.Timedelta(hours=1), 101.0, 0.60, 4) is False
+    assert record_prediction(log, "BTCUSDT", "1h",
+                             t + pd.Timedelta(hours=3), 101.0, 0.60, 4) is False
+    assert record_prediction(log, "BTCUSDT", "1h",
+                             t + pd.Timedelta(hours=4), 101.0, 0.60, 4) is True
+    assert len(log["pending"]) == 3
     print("test_record_and_dedupe 통과")
 
 
@@ -66,13 +73,19 @@ def test_pending_stays_until_horizon():
 def test_format_and_roundtrip():
     log = {"pending": [], "resolved": [
         {"symbol": "BTCUSDT", "interval": "1h", "candle_time": "t1",
-         "close": 1, "prob_up": 0.6, "horizon": 4, "actual_close": 2, "correct": True},
+         "close": 1, "prob_up": 0.6, "horizon": 4, "actual_close": 2,
+         "correct": True, "with_trend": True},
         {"symbol": "BTCUSDT", "interval": "1h", "candle_time": "t2",
-         "close": 1, "prob_up": 0.6, "horizon": 4, "actual_close": 0.5, "correct": False},
+         "close": 1, "prob_up": 0.6, "horizon": 4, "actual_close": 0.5,
+         "correct": False, "with_trend": False},
         {"symbol": "ETHUSDT", "interval": "1h", "candle_time": "t3",
-         "close": 1, "prob_up": 0.45, "horizon": 4, "actual_close": 0.9, "correct": True},
+         "close": 1, "prob_up": 0.45, "horizon": 4, "actual_close": 0.9,
+         "correct": True, "with_trend": None},
     ]}
     text = format_scorecard(log)
+    assert "추세 순응 예측: 1/1건 (100%)" in text
+    assert "역추세 예측: 0/1건 (0%)" in text
+    assert "1건씩 독립 예측만 기록" in text
     assert "2/3" in text and "67%" in text
     assert "BTCUSDT 50%" in text and "ETHUSDT 100%" in text
     # 산정 기준 설명이 포함돼야 함
