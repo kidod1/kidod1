@@ -246,10 +246,20 @@ def full_report(
             supports, resistances = find_levels(ohlcv)
             htf = fetch_htf_trends(symbol, interval)
             advice = advise(featured, pred, supports, resistances, htf_trends=htf)
+            # 예측 방향이 상위 시간대 추세와 일치하는지 (순응/역추세/혼조)
+            directional = [v for v in htf.values() if v in ("상승", "하락")]
+            if directional and all(t == pred.direction for t in directional):
+                with_trend = True
+            elif directional and all(t != pred.direction for t in directional):
+                with_trend = False
+            else:
+                with_trend = None
             # 확신 55% 미만(중립)은 방향 예측이 아니므로 성적표에 기록하지 않음
+            # (같은 호라이즌 구간과 겹치는 예측은 record_prediction이 걸러냄)
             if pred.is_confident:
                 record_prediction(log, symbol, interval, pred.last_open_time,
-                                  pred.last_close, pred.prob_up, pred.horizon)
+                                  pred.last_close, pred.prob_up, pred.horizon,
+                                  with_trend=with_trend)
         except Exception as exc:  # noqa: BLE001
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
