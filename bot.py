@@ -26,7 +26,12 @@ import requests
 from predictor.data import fetch_klines
 from predictor.features import HORIZON, build_features
 from predictor.levels import find_levels, format_levels
-from predictor.model import backtest, predict_next, prepare_dataset
+from predictor.model import (
+    backtest,
+    oos_confidence_stats,
+    predict_next,
+    prepare_dataset,
+)
 from predictor.scorecard import (
     DEFAULT_LOG_FILE,
     format_scorecard,
@@ -93,6 +98,24 @@ class TelegramClient:
         resp.raise_for_status()
 
 
+# 방향 예측 채택 조건: 검증 표본이 이만큼 쌓였는데 검증 적중률이 기준 미만이면
+# 그 심볼의 확신은 신뢰 근거가 없으므로 방향 판단을 유보한다
+MIN_OOS_SAMPLE = 20
+MIN_OOS_RATE = 0.52
+
+
+def neutral_reason(pred, htf_trends, oos_rate, oos_n) -> str | None:
+    """방향 예측을 유보해야 하면 그 이유를, 채택해도 되면 None을 반환한다."""
+    if not pred.is_confident:
+        return "확신 낮음"
+    directional = [v for v in (htf_trends or {}).values() if v in ("상승", "하락")]
+    if directional and all(t != pred.direction for t in directional):
+        return "역추세 (4h/1d 추세와 반대)"
+    if oos_n >= MIN_OOS_SAMPLE and oos_rate is not None and oos_rate < MIN_OOS_RATE:
+        return f"모델 검증 미달 (검증 적중률 {oos_rate:.0%})"
+    return None
+
+
 def horizon_label(interval: str, horizon: int = HORIZON) -> str:
     """호라이즌을 사람이 읽는 시간 단위로 바꾼다 (예: 1h×4 → '4시간')."""
     minutes = INTERVAL_MINUTES.get(interval, 60) * horizon
@@ -109,6 +132,8 @@ def format_prediction_message(
     pred,
     accuracy: float | None = None,
     baseline: float | None = None,
+    oos_rate: float | None = None,
+    oos_n: int = 0,
 ) -> str:
     """예측 결과를 텔레그램 메시지 문자열로 만든다."""
     bar_len = 10
@@ -129,6 +154,9 @@ def format_prediction_message(
             "",
             f"백테스트 정확도 {accuracy:.1%} (기준선 {baseline:.1%})",
         ]
+    if oos_rate is not None:
+        lines.append(f"확신 예측 검증 적중률 {oos_rate:.0%} (최근 {oos_n}건, "
+                     f"과거로만 학습해 측정)")
     lines += ["", "※ 참고용이며 재무적 조언이 아닙니다."]
     return "\n".join(lines)
 
@@ -187,17 +215,22 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
     result = backtest(train, n_splits=3)
     pred = predict_next(train, latest)
-    featured = build_features(ohlcv)
+    oos_rate, oos_n = oos_confidence_stats(train)
+    featured = build_features(ohlcv, btc_df=btc_ohlcv)
     supports, resistances = find_levels(ohlcv)
-    advice = advise(featured, pred, supports, resistances,
-                    htf_trends=fetch_htf_trends(symbol, interval))
+    htf = fetch_htf_trends(symbol, interval)
+    advice = advise(featured, pred, supports, resistances, htf_trends=htf)
 
     prediction_part = format_prediction_message(
         symbol.upper(), interval, pred,
         accuracy=result.mean_accuracy, baseline=result.baseline_accuracy,
+        oos_rate=oos_rate, oos_n=oos_n,
     )
     # 예측 메시지의 마지막 면책 문구는 종합 메시지 끝에 한 번만 두기 위해 제거
     prediction_part = prediction_part.rsplit("\n\n※", 1)[0]
+    reason = neutral_reason(pred, htf, oos_rate, oos_n)
+    if reason is not None:
+        prediction_part += f"\n→ 방향 판단 유보: {reason}"
     return "\n\n".join([
         prediction_part,
         format_levels(supports, resistances, pred.last_close),
@@ -246,17 +279,16 @@ def full_report(
             supports, resistances = find_levels(ohlcv)
             htf = fetch_htf_trends(symbol, interval)
             advice = advise(featured, pred, supports, resistances, htf_trends=htf)
-            # 예측 방향이 상위 시간대 추세와 일치하는지 (순응/역추세/혼조)
-            directional = [v for v in htf.values() if v in ("상승", "하락")]
-            if directional and all(t == pred.direction for t in directional):
-                with_trend = True
-            elif directional and all(t != pred.direction for t in directional):
-                with_trend = False
-            else:
-                with_trend = None
-            # 확신 55% 미만(중립)은 방향 예측이 아니므로 성적표에 기록하지 않음
+            # 모델 검증: 최근 아웃오브샘플에서 확신 예측이 실제로 맞았는지
+            oos_rate, oos_n = oos_confidence_stats(train)
+            reason = neutral_reason(pred, htf, oos_rate, oos_n)
+            # 채택된 방향 예측만 성적표에 기록
             # (같은 호라이즌 구간과 겹치는 예측은 record_prediction이 걸러냄)
-            if pred.is_confident:
+            if reason is None:
+                directional = [v for v in htf.values() if v in ("상승", "하락")]
+                with_trend = (True if directional
+                              and all(t == pred.direction for t in directional)
+                              else None)
                 record_prediction(log, symbol, interval, pred.last_open_time,
                                   pred.last_close, pred.prob_up, pred.horizon,
                                   with_trend=with_trend)
@@ -264,26 +296,22 @@ def full_report(
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
 
-        if pred.is_confident:
+        if reason is None:
             arrow = "📈" if pred.prob_up >= 0.5 else "📉"
+            validation = (f", 검증 {oos_rate:.0%}/{oos_n}건"
+                          if oos_rate is not None else "")
             pred_line = (f"  예측: {pred.direction} {pred.confidence:.1%}"
                          f" (정확도 {result.mean_accuracy:.0%}"
-                         f"/기준 {result.baseline_accuracy:.0%})")
+                         f"/기준 {result.baseline_accuracy:.0%}{validation})")
         else:
             arrow = "⚪"
-            pred_line = (f"  예측: 중립 — 확신 낮음 (상승 {pred.prob_up:.1%}, "
-                         f"성적표 제외)")
+            pred_line = f"  예측: 중립 — {reason} (상승 {pred.prob_up:.1%})"
         lines = [
             f"{arrow} {symbol.upper()}  {pred.last_close:,.4f}",
             pred_line,
         ]
         if htf:
             lines.append("  추세: " + " / ".join(f"{k} {v}" for k, v in htf.items()))
-            # 확신 있는 예측이 상위 시간대 추세와 정반대면 역추세 표시
-            trends = [v for v in htf.values() if v in ("상승", "하락")]
-            if (pred.is_confident and trends
-                    and all(t != pred.direction for t in trends)):
-                lines.append("  ⚠ 역추세 예측 (4h/1d 추세와 반대 — 신뢰도 낮음)")
         if supports:
             lines.append(f"  지지: {supports[0].price:,.4f} ({supports[0].distance_pct:+.1%},"
                          f" 터치 {supports[0].touches}회)")
