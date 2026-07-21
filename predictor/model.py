@@ -183,6 +183,30 @@ def walk_forward_probabilities(train: pd.DataFrame, n_splits: int = 5) -> pd.Dat
     return pd.concat(parts, ignore_index=True)
 
 
+def oos_confidence_stats(
+    train: pd.DataFrame,
+    min_conf: float = CONFIDENT_THRESHOLD,
+    n_splits: int = 3,
+    last_n: int = 300,
+) -> tuple[float | None, int]:
+    """워크포워드 아웃오브샘플에서 '확신 예측'의 검증 적중률을 계산한다.
+
+    이 모델이 최근 데이터에서 확신(min_conf 이상)을 보였을 때 실제로 얼마나
+    맞았는지를 실전과 같은 조건(과거로만 학습)으로 측정한다. 이 수치가
+    낮으면 모델의 확신을 믿을 근거가 없다는 뜻이다.
+
+    Returns:
+        (검증 적중률, 표본 수) — 확신 예측이 없었으면 (None, 0)
+    """
+    probs = walk_forward_probabilities(train, n_splits=n_splits).tail(last_n)
+    confident = probs[(probs["prob_up"] >= min_conf)
+                      | (probs["prob_up"] <= 1 - min_conf)].dropna(subset=["target"])
+    if confident.empty:
+        return None, 0
+    hit = ((confident["prob_up"] >= 0.5) == (confident["target"] == 1.0)).mean()
+    return float(hit), int(len(confident))
+
+
 def predict_next(train: pd.DataFrame, latest: pd.DataFrame,
                  horizon: int = HORIZON) -> Prediction:
     """전체 데이터로 학습한 뒤 향후 horizon캔들의 방향 확률을 예측한다.
