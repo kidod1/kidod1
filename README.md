@@ -119,15 +119,21 @@ GitHub Actions 워크플로는 **지지/저항 돌파 알림** 방식으로 동�
 돌파 없이 조용할 때 정기 리포트도 받고 싶으면 서버에서 `--report` 모드를
 사용하세요 (GitHub 스케줄은 5분 간격을 보장하지 못합니다 — deploy/DEPLOY.md 참고).
 
-## 24시간 무료로 돌리기 (클라우드)
+## 24시간 돌리기
 
-- **GitHub Actions (추천 시작점)** — 저장소에 포함된 `.github/workflows/predict.yml` 이
-  매시간 예측을 텔레그램으로 보내줍니다. 저장소 Secrets에 `TELEGRAM_BOT_TOKEN` 과
-  `TELEGRAM_CHAT_ID` 만 등록하면 끝. 서버가 필요 없습니다.
-- **Oracle Cloud 무료 VM** — 실시간 `/predict` 조회까지 하려면 무료 서버에
-  `deploy/setup.sh` 한 번 실행으로 설치됩니다.
+- **내 컴퓨터 통합 서버 (`serve.py`)** ⭐ — 이 하나만 실행하면 정확한 5분 간격
+  리포트 + 돌파/추세 전환 알림 + 실시간 명령이 전부 동작합니다. 정확한 간격이
+  필요하면 이 방법이 가장 확실합니다.
+  ```bash
+  # Windows: set TELEGRAM_BOT_TOKEN=... 등으로 환경변수 설정 후
+  python serve.py
+  ```
+- **GitHub Actions** — 저장소 워크플로가 실행 때마다 리포트+돌파 알림을 보냅니다.
+  서버가 필요 없지만 스케줄이 불규칙(1~2시간 지연)합니다.
+- **Oracle Cloud 무료 VM** — 컴퓨터를 끄고도 24시간 돌리려면 `deploy/setup.sh`.
 
-자세한 단계는 [deploy/DEPLOY.md](deploy/DEPLOY.md) 를 참고하세요.
+Windows 설정과 작업 스케줄러 자동 실행 등 자세한 단계는
+[deploy/DEPLOY.md](deploy/DEPLOY.md) 를 참고하세요.
 
 ## 동작 원리
 
