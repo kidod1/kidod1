@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-07-29 06:00:00+00:00",
+   "close": 73.75,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4483,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1861.01,
