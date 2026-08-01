@@ -8,6 +8,15 @@
    "prob_up": 0.5836,
    "symbol": "BNBUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-01 11:00:00+00:00",
+   "close": 580.25,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.572,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
