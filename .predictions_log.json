@@ -1,20 +1,11 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-02 04:00:00+00:00",
-   "close": 1878.48,
+   "candle_time": "2026-08-02 09:00:00+00:00",
+   "close": 584.19,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.595,
-   "symbol": "ETHUSDT",
-   "with_trend": null
-  },
-  {
-   "candle_time": "2026-08-02 04:00:00+00:00",
-   "close": 584.88,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5748,
+   "prob_up": 0.6001,
    "symbol": "BNBUSDT",
    "with_trend": true
   }
@@ -844,6 +835,28 @@
    "prob_up": 0.5666,
    "symbol": "BNBUSDT",
    "with_trend": null
+  },
+  {
+   "actual_close": 1868.2,
+   "candle_time": "2026-08-02 04:00:00+00:00",
+   "close": 1878.48,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.595,
+   "symbol": "ETHUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 583.67,
+   "candle_time": "2026-08-02 04:00:00+00:00",
+   "close": 584.88,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5748,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ]
 }
