@@ -35,6 +35,24 @@
    "prob_up": 0.4499,
    "symbol": "SOLUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-03 20:00:00+00:00",
+   "close": 63834.01,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4351,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-03 20:00:00+00:00",
+   "close": 1869.47,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4027,
+   "symbol": "ETHUSDT",
+   "with_trend": null
   }
  ],
  "resolved": [
