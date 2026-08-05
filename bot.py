@@ -98,21 +98,29 @@ class TelegramClient:
         resp.raise_for_status()
 
 
-# 방향 예측 채택 조건: 검증 표본이 이만큼 쌓였는데 검증 적중률이 기준 미만이면
-# 그 심볼의 확신은 신뢰 근거가 없으므로 방향 판단을 유보한다
+# 방향 예측 채택 조건: 검증 표본이 이만큼 쌓였을 때, 그 방향의 검증 적중률이
+# "그 방향을 항상 찍었을 때의 기준선"보다 이 폭 이상 높아야 예측을 내보낸다.
+# 절대 적중률 대신 기준선 대비 우위를 보는 이유: 상승 편향 시장에서는 아무
+# 정보 없이 "상승"만 외쳐도 55%가 넘으므로 절대 기준은 게이트 역할을 못 한다.
 MIN_OOS_SAMPLE = 20
-MIN_OOS_RATE = 0.52
+MIN_EDGE = 0.02
 
 
-def neutral_reason(pred, htf_trends, oos_rate, oos_n) -> str | None:
-    """방향 예측을 유보해야 하면 그 이유를, 채택해도 되면 None을 반환한다."""
+def neutral_reason(pred, htf_trends, dir_stats) -> str | None:
+    """방향 예측을 유보해야 하면 그 이유를, 채택해도 되면 None을 반환한다.
+
+    Args:
+        dir_stats: oos_confidence_stats()의 방향별 검증 성적 딕셔너리
+    """
     if not pred.is_confident:
         return "확신 낮음"
     directional = [v for v in (htf_trends or {}).values() if v in ("상승", "하락")]
     if directional and all(t != pred.direction for t in directional):
         return "역추세 (4h/1d 추세와 반대)"
-    if oos_n >= MIN_OOS_SAMPLE and oos_rate is not None and oos_rate < MIN_OOS_RATE:
-        return f"모델 검증 미달 (검증 적중률 {oos_rate:.0%})"
+    stats = (dir_stats or {}).get(pred.direction)
+    if stats is not None and stats.samples >= MIN_OOS_SAMPLE and stats.edge < MIN_EDGE:
+        return (f"{pred.direction} 예측 검증 미달 "
+                f"(검증 {stats.hit_rate:.0%} vs 기준선 {stats.baseline:.0%})")
     return None
 
 
@@ -132,8 +140,7 @@ def format_prediction_message(
     pred,
     accuracy: float | None = None,
     baseline: float | None = None,
-    oos_rate: float | None = None,
-    oos_n: int = 0,
+    dir_stats: dict | None = None,
 ) -> str:
     """예측 결과를 텔레그램 메시지 문자열로 만든다."""
     bar_len = 10
@@ -154,9 +161,11 @@ def format_prediction_message(
             "",
             f"백테스트 정확도 {accuracy:.1%} (기준선 {baseline:.1%})",
         ]
-    if oos_rate is not None:
-        lines.append(f"확신 예측 검증 적중률 {oos_rate:.0%} (최근 {oos_n}건, "
-                     f"과거로만 학습해 측정)")
+    stats = (dir_stats or {}).get(pred.direction)
+    if stats is not None:
+        lines.append(f"{pred.direction} 예측 검증: 적중 {stats.hit_rate:.0%} vs "
+                     f"기준선 {stats.baseline:.0%} (우위 {stats.edge:+.0%}, "
+                     f"{stats.samples}건)")
     lines += ["", "※ 참고용이며 재무적 조언이 아닙니다."]
     return "\n".join(lines)
 
@@ -215,7 +224,7 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
     result = backtest(train, n_splits=3)
     pred = predict_next(train, latest)
-    oos_rate, oos_n = oos_confidence_stats(train)
+    dir_stats, _ = oos_confidence_stats(train)
     featured = build_features(ohlcv, btc_df=btc_ohlcv)
     supports, resistances = find_levels(ohlcv)
     htf = fetch_htf_trends(symbol, interval)
@@ -224,11 +233,11 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     prediction_part = format_prediction_message(
         symbol.upper(), interval, pred,
         accuracy=result.mean_accuracy, baseline=result.baseline_accuracy,
-        oos_rate=oos_rate, oos_n=oos_n,
+        dir_stats=dir_stats,
     )
     # 예측 메시지의 마지막 면책 문구는 종합 메시지 끝에 한 번만 두기 위해 제거
     prediction_part = prediction_part.rsplit("\n\n※", 1)[0]
-    reason = neutral_reason(pred, htf, oos_rate, oos_n)
+    reason = neutral_reason(pred, htf, dir_stats)
     if reason is not None:
         prediction_part += f"\n→ 방향 판단 유보: {reason}"
     return "\n\n".join([
@@ -280,8 +289,8 @@ def full_report(
             htf = fetch_htf_trends(symbol, interval)
             advice = advise(featured, pred, supports, resistances, htf_trends=htf)
             # 모델 검증: 최근 아웃오브샘플에서 확신 예측이 실제로 맞았는지
-            oos_rate, oos_n = oos_confidence_stats(train)
-            reason = neutral_reason(pred, htf, oos_rate, oos_n)
+            dir_stats, _ = oos_confidence_stats(train)
+            reason = neutral_reason(pred, htf, dir_stats)
             # 채택된 방향 예측만 성적표에 기록
             # (같은 호라이즌 구간과 겹치는 예측은 record_prediction이 걸러냄)
             if reason is None:
@@ -298,8 +307,9 @@ def full_report(
 
         if reason is None:
             arrow = "📈" if pred.prob_up >= 0.5 else "📉"
-            validation = (f", 검증 {oos_rate:.0%}/{oos_n}건"
-                          if oos_rate is not None else "")
+            stats = dir_stats.get(pred.direction)
+            validation = (f", 검증우위 {stats.edge:+.0%}/{stats.samples}건"
+                          if stats is not None else "")
             pred_line = (f"  예측: {pred.direction} {pred.confidence:.1%}"
                          f" (정확도 {result.mean_accuracy:.0%}"
                          f"/기준 {result.baseline_accuracy:.0%}{validation})")
