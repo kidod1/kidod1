@@ -122,12 +122,35 @@ def _fit_calibrator(X: np.ndarray, y: np.ndarray) -> LogisticRegression | None:
     return calibrator
 
 
+def drop_open_candle(ohlcv: pd.DataFrame) -> pd.DataFrame:
+    """아직 닫히지 않은 마지막 캔들을 제거한다.
+
+    바이낸스 klines는 진행 중인 캔들을 마지막에 포함한다. 그 캔들은 거래량이
+    부분적으로만 쌓였고 종가·고저가도 확정되지 않아, 완성된 캔들로만 학습한
+    모델에게는 학습 분포 밖의 입력이 된다(특히 volume_ratio가 크게 왜곡됨).
+    예측 입력을 마지막 '닫힌' 캔들로 맞춰 학습과 추론 조건을 일치시킨다.
+    """
+    if "close_time" not in ohlcv.columns or ohlcv.empty:
+        return ohlcv
+    now = pd.Timestamp.now(tz="UTC")
+    close_time = ohlcv["close_time"]
+    if close_time.dt.tz is None:
+        close_time = close_time.dt.tz_localize("UTC")
+    return ohlcv[close_time <= now]
+
+
 def prepare_dataset(
     ohlcv: pd.DataFrame,
     btc_ohlcv: pd.DataFrame | None = None,
     horizon: int = HORIZON,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """피처를 만들고 (학습용 데이터, 예측용 마지막 행)으로 나눈다."""
+    """피처를 만들고 (학습용 데이터, 예측용 마지막 행)으로 나눈다.
+
+    진행 중인 캔들은 제외하므로, 예측은 항상 마지막으로 '닫힌' 캔들 기준이다.
+    """
+    ohlcv = drop_open_candle(ohlcv)
+    if btc_ohlcv is not None:
+        btc_ohlcv = drop_open_candle(btc_ohlcv)
     featured = build_features(ohlcv, btc_df=btc_ohlcv, horizon=horizon)
     # 지표 계산 초기 구간(NaN)이 있는 행 제거하되, 마지막 행(예측 대상)은 유지
     train = featured.iloc[:-1].dropna(subset=FEATURE_COLUMNS + ["target"])
@@ -183,28 +206,53 @@ def walk_forward_probabilities(train: pd.DataFrame, n_splits: int = 5) -> pd.Dat
     return pd.concat(parts, ignore_index=True)
 
 
+@dataclass
+class DirectionStats:
+    """한 방향(상승/하락) 예측의 아웃오브샘플 검증 성적."""
+    hit_rate: float
+    samples: int
+    baseline: float  # 같은 구간에서 그 방향을 항상 찍었을 때의 적중률
+
+    @property
+    def edge(self) -> float:
+        """기준선 대비 우위 (양수여야 예측할 가치가 있음)."""
+        return self.hit_rate - self.baseline
+
+
 def oos_confidence_stats(
     train: pd.DataFrame,
     min_conf: float = CONFIDENT_THRESHOLD,
     n_splits: int = 3,
     last_n: int = 300,
-) -> tuple[float | None, int]:
-    """워크포워드 아웃오브샘플에서 '확신 예측'의 검증 적중률을 계산한다.
+) -> tuple[dict[str, DirectionStats], float]:
+    """워크포워드 아웃오브샘플에서 방향별 검증 성적과 시장 상승 비율을 낸다.
 
-    이 모델이 최근 데이터에서 확신(min_conf 이상)을 보였을 때 실제로 얼마나
-    맞았는지를 실전과 같은 조건(과거로만 학습)으로 측정한다. 이 수치가
-    낮으면 모델의 확신을 믿을 근거가 없다는 뜻이다.
+    절대 적중률만 보면 함정에 빠진다: 검증 구간의 시장이 상승 편향이면
+    "항상 상승"만 해도 높은 적중률이 나오므로, 그 기준선을 넘지 못하는 예측은
+    정보가 없는 것이다. 그래서 상승/하락 각각에 대해 '그 방향을 항상 찍었을
+    때의 적중률(기준선)'과 비교한 우위(edge)를 함께 계산한다.
 
     Returns:
-        (검증 적중률, 표본 수) — 확신 예측이 없었으면 (None, 0)
+        ({"상승": DirectionStats, "하락": ...}, 검증 구간의 시장 상승 비율)
+        — 표본이 없는 방향은 딕셔너리에서 빠진다.
     """
     probs = walk_forward_probabilities(train, n_splits=n_splits).tail(last_n)
-    confident = probs[(probs["prob_up"] >= min_conf)
-                      | (probs["prob_up"] <= 1 - min_conf)].dropna(subset=["target"])
-    if confident.empty:
-        return None, 0
-    hit = ((confident["prob_up"] >= 0.5) == (confident["target"] == 1.0)).mean()
-    return float(hit), int(len(confident))
+    probs = probs.dropna(subset=["target"])
+    if probs.empty:
+        return {}, 0.5
+
+    up_rate = float((probs["target"] == 1.0).mean())  # 시장 상승 비율
+    out: dict[str, DirectionStats] = {}
+    for name, mask, baseline in (
+        ("상승", probs["prob_up"] >= min_conf, up_rate),
+        ("하락", probs["prob_up"] <= 1 - min_conf, 1 - up_rate),
+    ):
+        subset = probs[mask]
+        if subset.empty:
+            continue
+        hit = float(((subset["prob_up"] >= 0.5) == (subset["target"] == 1.0)).mean())
+        out[name] = DirectionStats(hit, len(subset), baseline)
+    return out, up_rate
 
 
 def predict_next(train: pd.DataFrame, latest: pd.DataFrame,
