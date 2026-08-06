@@ -20,7 +20,9 @@ import os
 import sys
 import time
 import traceback
+from dataclasses import dataclass
 
+import pandas as pd
 import requests
 
 from predictor.data import fetch_klines
@@ -248,6 +250,101 @@ def run_signal(symbol: str, interval: str, limit: int = DEFAULT_LIMIT) -> str:
     ])
 
 
+@dataclass
+class SymbolSnapshot:
+    """한 심볼의 분석 결과 한 묶음 — 리포트 출력과 변화 감지가 함께 쓴다."""
+    symbol: str
+    interval: str
+    close: float
+    pred: object                  # Prediction
+    neutral: str | None           # 방향 예측 유보 사유 (None이면 채택)
+    advice: object                # TimingAdvice
+    htf: dict[str, str]
+    supports: list
+    resistances: list
+    dir_stats: dict
+    accuracy: float
+    baseline: float
+    ohlcv: pd.DataFrame
+
+    @property
+    def verdict(self) -> str:
+        """방향 판단 — 채택되면 '상승'/'하락', 유보면 '중립'."""
+        return "중립" if self.neutral else self.pred.direction
+
+
+def analyze_full(
+    symbol: str,
+    interval: str = DEFAULT_INTERVAL,
+    limit: int = DEFAULT_LIMIT,
+    btc_ohlcv: pd.DataFrame | None = None,
+) -> SymbolSnapshot:
+    """한 심볼을 끝까지 분석해 스냅샷으로 반환한다 (예외는 호출자가 처리)."""
+    if symbol.upper() == "BTCUSDT" and btc_ohlcv is not None:
+        ohlcv = btc_ohlcv
+    else:
+        ohlcv = fetch_klines(symbol, interval, limit)
+    train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
+    result = backtest(train, n_splits=3)
+    pred = predict_next(train, latest)
+    featured = build_features(ohlcv, btc_df=btc_ohlcv)
+    supports, resistances = find_levels(ohlcv)
+    htf = fetch_htf_trends(symbol, interval)
+    advice = advise(featured, pred, supports, resistances, htf_trends=htf)
+    dir_stats, _ = oos_confidence_stats(train)
+    return SymbolSnapshot(
+        symbol=symbol.upper(), interval=interval, close=pred.last_close,
+        pred=pred, neutral=neutral_reason(pred, htf, dir_stats), advice=advice,
+        htf=htf, supports=supports, resistances=resistances, dir_stats=dir_stats,
+        accuracy=result.mean_accuracy, baseline=result.baseline_accuracy,
+        ohlcv=ohlcv,
+    )
+
+
+def format_symbol_block(snap: SymbolSnapshot) -> str:
+    """스냅샷을 리포트 한 블록의 텍스트로 만든다."""
+    if snap.neutral is None:
+        arrow = "📈" if snap.pred.prob_up >= 0.5 else "📉"
+        stats = snap.dir_stats.get(snap.pred.direction)
+        validation = (f", 검증우위 {stats.edge:+.0%}/{stats.samples}건"
+                      if stats is not None else "")
+        pred_line = (f"  예측: {snap.pred.direction} {snap.pred.confidence:.1%}"
+                     f" (정확도 {snap.accuracy:.0%}"
+                     f"/기준 {snap.baseline:.0%}{validation})")
+    else:
+        arrow = "⚪"
+        pred_line = f"  예측: 중립 — {snap.neutral} (상승 {snap.pred.prob_up:.1%})"
+
+    lines = [f"{arrow} {snap.symbol}  {snap.close:,.4f}", pred_line]
+    if snap.htf:
+        lines.append("  추세: " + " / ".join(f"{k} {v}" for k, v in snap.htf.items()))
+    if snap.supports:
+        s = snap.supports[0]
+        lines.append(f"  지지: {s.price:,.4f} ({s.distance_pct:+.1%}, 터치 {s.touches}회)")
+    if snap.resistances:
+        r = snap.resistances[0]
+        lines.append(f"  저항: {r.price:,.4f} ({r.distance_pct:+.1%}, 터치 {r.touches}회)")
+    lines.append(f"  판단: {snap.advice.action} (점수 {snap.advice.score:+d})")
+    if snap.advice.warning:
+        lines.append(f"  {snap.advice.warning}")
+    if snap.advice.stop_loss is not None and snap.advice.take_profit is not None:
+        lines.append(f"  손절 {snap.advice.stop_loss:,.4f} / "
+                     f"목표 {snap.advice.take_profit:,.4f}")
+    return "\n".join(lines)
+
+
+def record_snapshot(log: dict, snap: SymbolSnapshot) -> None:
+    """채택된 방향 예측만 성적표에 기록한다."""
+    if snap.neutral is not None:
+        return
+    directional = [v for v in snap.htf.values() if v in ("상승", "하락")]
+    with_trend = (True if directional
+                  and all(t == snap.pred.direction for t in directional) else None)
+    record_prediction(log, snap.symbol, snap.interval, snap.pred.last_open_time,
+                      snap.close, snap.pred.prob_up, snap.pred.horizon,
+                      with_trend=with_trend)
+
+
 def full_report(
     symbols: list[str],
     interval: str = DEFAULT_INTERVAL,
@@ -276,64 +373,13 @@ def full_report(
 
     for symbol in symbols:
         try:
-            if symbol.upper() == "BTCUSDT" and btc_ohlcv is not None:
-                ohlcv = btc_ohlcv
-            else:
-                ohlcv = fetch_klines(symbol, interval, limit)
-            ohlcv_cache[symbol.upper()] = ohlcv
-            train, latest = prepare_dataset(ohlcv, btc_ohlcv=btc_ohlcv)
-            result = backtest(train, n_splits=3)
-            pred = predict_next(train, latest)
-            featured = build_features(ohlcv, btc_df=btc_ohlcv)
-            supports, resistances = find_levels(ohlcv)
-            htf = fetch_htf_trends(symbol, interval)
-            advice = advise(featured, pred, supports, resistances, htf_trends=htf)
-            # 모델 검증: 최근 아웃오브샘플에서 확신 예측이 실제로 맞았는지
-            dir_stats, _ = oos_confidence_stats(train)
-            reason = neutral_reason(pred, htf, dir_stats)
-            # 채택된 방향 예측만 성적표에 기록
-            # (같은 호라이즌 구간과 겹치는 예측은 record_prediction이 걸러냄)
-            if reason is None:
-                directional = [v for v in htf.values() if v in ("상승", "하락")]
-                with_trend = (True if directional
-                              and all(t == pred.direction for t in directional)
-                              else None)
-                record_prediction(log, symbol, interval, pred.last_open_time,
-                                  pred.last_close, pred.prob_up, pred.horizon,
-                                  with_trend=with_trend)
+            snap = analyze_full(symbol, interval, limit, btc_ohlcv)
         except Exception as exc:  # noqa: BLE001
             blocks.append(f"❌ {symbol.upper()}: 조회 실패 ({exc})")
             continue
-
-        if reason is None:
-            arrow = "📈" if pred.prob_up >= 0.5 else "📉"
-            stats = dir_stats.get(pred.direction)
-            validation = (f", 검증우위 {stats.edge:+.0%}/{stats.samples}건"
-                          if stats is not None else "")
-            pred_line = (f"  예측: {pred.direction} {pred.confidence:.1%}"
-                         f" (정확도 {result.mean_accuracy:.0%}"
-                         f"/기준 {result.baseline_accuracy:.0%}{validation})")
-        else:
-            arrow = "⚪"
-            pred_line = f"  예측: 중립 — {reason} (상승 {pred.prob_up:.1%})"
-        lines = [
-            f"{arrow} {symbol.upper()}  {pred.last_close:,.4f}",
-            pred_line,
-        ]
-        if htf:
-            lines.append("  추세: " + " / ".join(f"{k} {v}" for k, v in htf.items()))
-        if supports:
-            lines.append(f"  지지: {supports[0].price:,.4f} ({supports[0].distance_pct:+.1%},"
-                         f" 터치 {supports[0].touches}회)")
-        if resistances:
-            lines.append(f"  저항: {resistances[0].price:,.4f} ({resistances[0].distance_pct:+.1%},"
-                         f" 터치 {resistances[0].touches}회)")
-        lines.append(f"  판단: {advice.action} (점수 {advice.score:+d})")
-        if advice.warning:
-            lines.append(f"  {advice.warning}")
-        if advice.stop_loss is not None and advice.take_profit is not None:
-            lines.append(f"  손절 {advice.stop_loss:,.4f} / 목표 {advice.take_profit:,.4f}")
-        blocks.append("\n".join(lines))
+        ohlcv_cache[snap.symbol] = snap.ohlcv
+        record_snapshot(log, snap)
+        blocks.append(format_symbol_block(snap))
 
     # 성적표: 호라이즌이 지난 예측을 실제 결과와 대조하고 적중률 표시
     resolve_pending(log, ohlcv_cache)
