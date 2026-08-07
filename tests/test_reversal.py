@@ -71,24 +71,27 @@ def test_candle_patterns():
 
 
 def test_trend_shift_detection():
+    """뚜렷한 추세와 전환이 감지되는지 (휩쏘 억제 등 상세는 test_trendshift.py)."""
+    from predictor.trendshift import COOLDOWN_CANDLES
+
     n = 120
-    # 상승 추세 데이터 → SMA7 > SMA25
     up = _ohlcv_from_close(np.linspace(100, 150, n))
     assert current_trend(up) == "상승"
-    # 하락 전환 데이터: 상승 후 급락 → SMA7 < SMA25
     down = _ohlcv_from_close(np.concatenate([
         np.linspace(100, 150, n - 40), np.linspace(150, 110, 40)]))
     assert current_trend(down) == "하락"
 
     # 첫 실행: 기록만 (알림 없음)
     shift, stored = check_trend_shift(up, "BTCUSDT", "4h", None)
-    assert shift is None and stored == "상승"
+    assert shift is None and stored["trend"] == "상승"
     # 추세 유지: 알림 없음
-    shift, stored = check_trend_shift(up, "BTCUSDT", "4h", "상승")
-    assert shift is None and stored == "상승"
-    # 전환: 알림 발생
-    shift, stored = check_trend_shift(down, "BTCUSDT", "4h", "상승")
-    assert shift is not None and stored == "하락"
+    shift, stored = check_trend_shift(up, "BTCUSDT", "4h", stored)
+    assert shift is None and stored["trend"] == "상승"
+    # 전환: 쿨다운이 지난 뒤에만 알림
+    shift, stored = check_trend_shift(
+        down, "BTCUSDT", "4h",
+        {"trend": "상승", "candles_since_shift": COOLDOWN_CANDLES})
+    assert shift is not None and stored["trend"] == "하락"
     assert shift.old_trend == "상승" and shift.new_trend == "하락"
     msg = format_trend_shift(shift)
     assert "추세 전환" in msg and "상승 → 하락" in msg

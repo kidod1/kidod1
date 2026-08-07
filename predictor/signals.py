@@ -88,17 +88,14 @@ def _score_to_action(score: int) -> str:
 
 
 def trend_direction(ohlcv: pd.DataFrame) -> str:
-    """단순 추세 판정 — 종가가 SMA25 위(+0.5%)면 상승, 아래(-0.5%)면 하락."""
-    close = ohlcv["close"]
-    if len(close) < 26:
-        return "중립"
-    sma25 = close.rolling(25).mean().iloc[-1]
-    last = float(close.iloc[-1])
-    if last > sma25 * 1.005:
-        return "상승"
-    if last < sma25 * 0.995:
-        return "하락"
-    return "중립"
+    """상위 시간대 추세 방향 — 추세 전환 알림과 동일한 보수적 기준을 쓴다.
+
+    이격 마진과 확인 캔들을 통과하지 못하면 "중립"이다. 리포트 표시와 역추세
+    판정이 알림과 어긋나지 않도록 판정 로직을 한 곳(trendshift)으로 통일한다.
+    """
+    from .trendshift import current_trend  # 순환 임포트 방지를 위해 지연 임포트
+
+    return current_trend(ohlcv) or "중립"
 
 
 def higher_timeframes(interval: str) -> list[str]:
