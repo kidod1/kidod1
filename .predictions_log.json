@@ -17,6 +17,15 @@
    "prob_up": 0.341,
    "symbol": "XRPUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-10 23:00:00+00:00",
+   "close": 63970.01,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.566,
+   "symbol": "BTCUSDT",
+   "with_trend": null
   }
  ],
  "resolved": [
