@@ -1,15 +1,6 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-12 13:00:00+00:00",
-   "close": 612.37,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.7169,
-   "symbol": "BNBUSDT",
-   "with_trend": true
-  },
-  {
    "candle_time": "2026-08-12 14:00:00+00:00",
    "close": 75.48,
    "horizon": 4,
@@ -17,6 +8,15 @@
    "prob_up": 0.6639,
    "symbol": "SOLUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-12 17:00:00+00:00",
+   "close": 610.71,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6216,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
@@ -1986,6 +1986,17 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.5815,
+   "symbol": "BNBUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 610.71,
+   "candle_time": "2026-08-12 13:00:00+00:00",
+   "close": 612.37,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.7169,
    "symbol": "BNBUSDT",
    "with_trend": true
   }
