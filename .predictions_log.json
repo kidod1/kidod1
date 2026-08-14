@@ -26,6 +26,15 @@
    "prob_up": 0.5509,
    "symbol": "SOLUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-14 19:00:00+00:00",
+   "close": 0.9989,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4378,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
