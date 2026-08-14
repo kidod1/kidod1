@@ -1,39 +1,21 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-14 01:00:00+00:00",
-   "close": 1889.41,
+   "candle_time": "2026-08-14 05:00:00+00:00",
+   "close": 1884.07,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.5672,
+   "prob_up": 0.5588,
    "symbol": "ETHUSDT",
    "with_trend": null
   },
   {
-   "candle_time": "2026-08-14 01:00:00+00:00",
-   "close": 76.08,
+   "candle_time": "2026-08-14 05:00:00+00:00",
+   "close": 1.0097,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.5742,
-   "symbol": "SOLUSDT",
-   "with_trend": null
-  },
-  {
-   "candle_time": "2026-08-14 01:00:00+00:00",
-   "close": 1.0116,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.3828,
+   "prob_up": 0.3366,
    "symbol": "XRPUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-08-14 01:00:00+00:00",
-   "close": 611.28,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5916,
-   "symbol": "BNBUSDT",
    "with_trend": true
   }
  ],
@@ -2181,6 +2163,50 @@
    "interval": "1h",
    "prob_up": 0.3682,
    "symbol": "XRPUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 1884.07,
+   "candle_time": "2026-08-14 01:00:00+00:00",
+   "close": 1889.41,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5672,
+   "symbol": "ETHUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 75.93,
+   "candle_time": "2026-08-14 01:00:00+00:00",
+   "close": 76.08,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5742,
+   "symbol": "SOLUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 1.0097,
+   "candle_time": "2026-08-14 01:00:00+00:00",
+   "close": 1.0116,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.3828,
+   "symbol": "XRPUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 610.31,
+   "candle_time": "2026-08-14 01:00:00+00:00",
+   "close": 611.28,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5916,
+   "symbol": "BNBUSDT",
    "with_trend": true
   }
  ]
