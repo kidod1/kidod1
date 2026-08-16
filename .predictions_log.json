@@ -1,15 +1,6 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-15 23:00:00+00:00",
-   "close": 75.35,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.576,
-   "symbol": "SOLUSDT",
-   "with_trend": null
-  },
-  {
    "candle_time": "2026-08-16 01:00:00+00:00",
    "close": 1.0013,
    "horizon": 4,
@@ -2503,6 +2494,17 @@
    "prob_up": 0.3912,
    "symbol": "XRPUSDT",
    "with_trend": true
+  },
+  {
+   "actual_close": 75.58,
+   "candle_time": "2026-08-15 23:00:00+00:00",
+   "close": 75.35,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.576,
+   "symbol": "SOLUSDT",
+   "with_trend": null
   }
  ]
 }
