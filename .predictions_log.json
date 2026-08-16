@@ -17,6 +17,15 @@
    "prob_up": 0.6781,
    "symbol": "BNBUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-16 10:00:00+00:00",
+   "close": 1.0002,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4321,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
