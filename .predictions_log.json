@@ -1,24 +1,6 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-16 09:00:00+00:00",
-   "close": 75.32,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5808,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-08-16 09:00:00+00:00",
-   "close": 607.33,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.6781,
-   "symbol": "BNBUSDT",
-   "with_trend": true
-  },
-  {
    "candle_time": "2026-08-16 10:00:00+00:00",
    "close": 1.0002,
    "horizon": 4,
@@ -35,6 +17,15 @@
    "prob_up": 0.5654,
    "symbol": "BTCUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-16 13:00:00+00:00",
+   "close": 607.45,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.655,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
@@ -2587,6 +2578,28 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.6673,
+   "symbol": "BNBUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 75.31,
+   "candle_time": "2026-08-16 09:00:00+00:00",
+   "close": 75.32,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5808,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 607.45,
+   "candle_time": "2026-08-16 09:00:00+00:00",
+   "close": 607.33,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6781,
    "symbol": "BNBUSDT",
    "with_trend": true
   }
