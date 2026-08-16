@@ -26,6 +26,15 @@
    "prob_up": 0.552,
    "symbol": "SOLUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-16 22:00:00+00:00",
+   "close": 602.29,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.582,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
