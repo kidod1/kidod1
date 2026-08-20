@@ -8,6 +8,15 @@
    "prob_up": 0.6112,
    "symbol": "BTCUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-08-20 01:00:00+00:00",
+   "close": 2266.66,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6227,
+   "symbol": "ETHUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
