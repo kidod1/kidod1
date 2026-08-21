@@ -17,6 +17,24 @@
    "prob_up": 0.571,
    "symbol": "SOLUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-21 07:00:00+00:00",
+   "close": 1.3143,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5679,
+   "symbol": "XRPUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-21 07:00:00+00:00",
+   "close": 669.6,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5534,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
