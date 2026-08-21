@@ -1,47 +1,47 @@
 {
-  "BNBUSDT:1h": "2026-08-21 10:00:00+00:00",
-  "BTCUSDT:1h": "2026-08-21 10:00:00+00:00",
-  "ETHUSDT:1h": "2026-08-21 10:00:00+00:00",
-  "SOLUSDT:1h": "2026-08-21 10:00:00+00:00",
-  "XRPUSDT:1h": "2026-08-21 10:00:00+00:00",
+  "BNBUSDT:1h": "2026-08-21 11:00:00+00:00",
+  "BTCUSDT:1h": "2026-08-21 11:00:00+00:00",
+  "ETHUSDT:1h": "2026-08-21 11:00:00+00:00",
+  "SOLUSDT:1h": "2026-08-21 11:00:00+00:00",
+  "XRPUSDT:1h": "2026-08-21 11:00:00+00:00",
   "trend:BNBUSDT:1d": {
-    "candles_since_shift": 434,
+    "candles_since_shift": 435,
     "trend": "\uc0c1\uc2b9"
   },
   "trend:BNBUSDT:4h": {
-    "candles_since_shift": 40,
+    "candles_since_shift": 41,
     "trend": "\uc0c1\uc2b9"
   },
   "trend:BTCUSDT:1d": {
-    "candles_since_shift": 434,
+    "candles_since_shift": 435,
     "trend": "\ud558\ub77d"
   },
   "trend:BTCUSDT:4h": {
-    "candles_since_shift": 119,
+    "candles_since_shift": 120,
     "trend": "\uc0c1\uc2b9"
   },
   "trend:ETHUSDT:1d": {
-    "candles_since_shift": 434,
+    "candles_since_shift": 435,
     "trend": "\ud558\ub77d"
   },
   "trend:ETHUSDT:4h": {
-    "candles_since_shift": 56,
+    "candles_since_shift": 57,
     "trend": "\uc0c1\uc2b9"
   },
   "trend:SOLUSDT:1d": {
-    "candles_since_shift": 434,
+    "candles_since_shift": 435,
     "trend": "\ud558\ub77d"
   },
   "trend:SOLUSDT:4h": {
-    "candles_since_shift": 101,
+    "candles_since_shift": 102,
     "trend": "\uc0c1\uc2b9"
   },
   "trend:XRPUSDT:1d": {
-    "candles_since_shift": 434,
+    "candles_since_shift": 435,
     "trend": "\ud558\ub77d"
   },
   "trend:XRPUSDT:4h": {
-    "candles_since_shift": 48,
+    "candles_since_shift": 49,
     "trend": "\uc0c1\uc2b9"
   }
 }
