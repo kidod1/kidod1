@@ -17,6 +17,15 @@
    "prob_up": 0.5611,
    "symbol": "BNBUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-22 22:00:00+00:00",
+   "close": 76997.76,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5917,
+   "symbol": "BTCUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
