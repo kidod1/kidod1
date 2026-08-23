@@ -1,15 +1,6 @@
 {
  "pending": [
   {
-   "candle_time": "2026-08-23 14:00:00+00:00",
-   "close": 95.07,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.6283,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
    "candle_time": "2026-08-23 15:00:00+00:00",
    "close": 77156.13,
    "horizon": 4,
@@ -3855,6 +3846,17 @@
    "interval": "1h",
    "prob_up": 0.5543,
    "symbol": "BNBUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 95.29,
+   "candle_time": "2026-08-23 14:00:00+00:00",
+   "close": 95.07,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6283,
+   "symbol": "SOLUSDT",
    "with_trend": true
   }
  ]
