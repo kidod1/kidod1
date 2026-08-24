@@ -10,21 +10,21 @@
    "with_trend": true
   },
   {
-   "candle_time": "2026-08-24 00:00:00+00:00",
-   "close": 95.54,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.6427,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
    "candle_time": "2026-08-24 02:00:00+00:00",
    "close": 700.12,
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.5541,
    "symbol": "BNBUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-24 04:00:00+00:00",
+   "close": 94.22,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6286,
+   "symbol": "SOLUSDT",
    "with_trend": true
   }
  ],
@@ -3909,6 +3909,17 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.6407,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 94.22,
+   "candle_time": "2026-08-24 00:00:00+00:00",
+   "close": 95.54,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6427,
    "symbol": "SOLUSDT",
    "with_trend": true
   }
