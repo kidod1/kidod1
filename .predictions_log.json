@@ -26,6 +26,15 @@
    "prob_up": 0.7009,
    "symbol": "ETHUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-24 20:00:00+00:00",
+   "close": 703.2,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6076,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
