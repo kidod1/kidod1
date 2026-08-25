@@ -17,6 +17,15 @@
    "prob_up": 0.6771,
    "symbol": "BTCUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-08-25 02:00:00+00:00",
+   "close": 100.92,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6599,
+   "symbol": "SOLUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
