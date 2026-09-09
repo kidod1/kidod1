@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-09-09 00:00:00+00:00",
+   "close": 78774.65,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4195,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1861.01,
