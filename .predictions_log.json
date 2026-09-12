@@ -1,13 +1,22 @@
 {
  "pending": [
   {
-   "candle_time": "2026-09-11 20:00:00+00:00",
-   "close": 77339.33,
+   "candle_time": "2026-09-12 00:00:00+00:00",
+   "close": 77287.43,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.3956,
+   "prob_up": 0.3404,
    "symbol": "BTCUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-09-12 00:00:00+00:00",
+   "close": 2510.77,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5801,
+   "symbol": "ETHUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
@@ -5189,6 +5198,17 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.3951,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 77287.43,
+   "candle_time": "2026-09-11 20:00:00+00:00",
+   "close": 77339.33,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.3956,
    "symbol": "BTCUSDT",
    "with_trend": null
   }
