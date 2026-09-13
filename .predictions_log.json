@@ -1,15 +1,5 @@
 {
- "pending": [
-  {
-   "candle_time": "2026-09-13 09:00:00+00:00",
-   "close": 2485.18,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5577,
-   "symbol": "ETHUSDT",
-   "with_trend": true
-  }
- ],
+ "pending": [],
  "resolved": [
   {
    "actual_close": 1861.01,
@@ -5310,6 +5300,17 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.5777,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 2479.08,
+   "candle_time": "2026-09-13 09:00:00+00:00",
+   "close": 2485.18,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5577,
    "symbol": "ETHUSDT",
    "with_trend": true
   }
