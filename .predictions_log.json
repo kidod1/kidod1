@@ -1,11 +1,11 @@
 {
  "pending": [
   {
-   "candle_time": "2026-09-13 19:00:00+00:00",
-   "close": 1.3549,
+   "candle_time": "2026-09-13 23:00:00+00:00",
+   "close": 1.3412,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.3957,
+   "prob_up": 0.406,
    "symbol": "XRPUSDT",
    "with_trend": true
   }
@@ -5334,6 +5334,17 @@
    "prob_up": 0.4279,
    "symbol": "BTCUSDT",
    "with_trend": null
+  },
+  {
+   "actual_close": 1.3412,
+   "candle_time": "2026-09-13 19:00:00+00:00",
+   "close": 1.3549,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.3957,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ]
 }
