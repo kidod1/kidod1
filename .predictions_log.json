@@ -17,6 +17,24 @@
    "prob_up": 0.4339,
    "symbol": "BNBUSDT",
    "with_trend": null
+  },
+  {
+   "candle_time": "2026-09-16 18:00:00+00:00",
+   "close": 2398.05,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4116,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-09-16 18:00:00+00:00",
+   "close": 97.84,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4042,
+   "symbol": "SOLUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
