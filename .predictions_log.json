@@ -17,6 +17,15 @@
    "prob_up": 0.4345,
    "symbol": "ETHUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-09-17 23:00:00+00:00",
+   "close": 1.2964,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4158,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
