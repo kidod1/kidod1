@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-09-24 04:00:00+00:00",
+   "close": 770.83,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6317,
+   "symbol": "BNBUSDT",
+   "with_trend": true
+  }
+ ],
  "resolved": [
   {
    "actual_close": 571.29,
