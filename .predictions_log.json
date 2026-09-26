@@ -17,6 +17,15 @@
    "prob_up": 0.6002,
    "symbol": "SOLUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-09-26 17:00:00+00:00",
+   "close": 2690.57,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.568,
+   "symbol": "ETHUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
