@@ -1,24 +1,6 @@
 {
  "pending": [
   {
-   "candle_time": "2026-09-26 14:00:00+00:00",
-   "close": 84020.0,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5761,
-   "symbol": "BTCUSDT",
-   "with_trend": null
-  },
-  {
-   "candle_time": "2026-09-26 14:00:00+00:00",
-   "close": 120.95,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.6002,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
    "candle_time": "2026-09-26 17:00:00+00:00",
    "close": 2690.57,
    "horizon": 4,
@@ -26,31 +8,27 @@
    "prob_up": 0.568,
    "symbol": "ETHUSDT",
    "with_trend": true
+  },
+  {
+   "candle_time": "2026-09-26 20:00:00+00:00",
+   "close": 84030.34,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.57,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  },
+  {
+   "candle_time": "2026-09-26 20:00:00+00:00",
+   "close": 1.5118,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6057,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 72.7,
-   "candle_time": "2026-08-01 12:00:00+00:00",
-   "close": 72.89,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4086,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 575.74,
-   "candle_time": "2026-08-01 15:00:00+00:00",
-   "close": 578.61,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5664,
-   "symbol": "BNBUSDT",
-   "with_trend": true
-  },
   {
    "actual_close": 71.56,
    "candle_time": "2026-08-01 16:00:00+00:00",
@@ -5526,6 +5504,28 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.6196,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 83998.68,
+   "candle_time": "2026-09-26 14:00:00+00:00",
+   "close": 84020.0,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5761,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 121.06,
+   "candle_time": "2026-09-26 14:00:00+00:00",
+   "close": 120.95,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6002,
    "symbol": "SOLUSDT",
    "with_trend": true
   }
