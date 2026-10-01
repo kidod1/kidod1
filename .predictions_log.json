@@ -1,27 +1,16 @@
 {
  "pending": [
   {
-   "candle_time": "2026-10-01 07:00:00+00:00",
-   "close": 117.49,
+   "candle_time": "2026-10-01 15:00:00+00:00",
+   "close": 117.38,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.585,
+   "prob_up": 0.6637,
    "symbol": "SOLUSDT",
    "with_trend": null
   }
  ],
  "resolved": [
-  {
-   "actual_close": 73.87,
-   "candle_time": "2026-08-03 22:00:00+00:00",
-   "close": 73.54,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4239,
-   "symbol": "SOLUSDT",
-   "with_trend": null
-  },
   {
    "actual_close": 63818.48,
    "candle_time": "2026-08-04 01:00:00+00:00",
@@ -5509,6 +5498,17 @@
    "interval": "1h",
    "prob_up": 0.4188,
    "symbol": "XRPUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 117.96,
+   "candle_time": "2026-10-01 07:00:00+00:00",
+   "close": 117.49,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.585,
+   "symbol": "SOLUSDT",
    "with_trend": null
   }
  ]
