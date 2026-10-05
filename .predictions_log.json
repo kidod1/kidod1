@@ -1,47 +1,16 @@
 {
  "pending": [
   {
-   "candle_time": "2026-10-05 01:00:00+00:00",
-   "close": 2724.7,
+   "candle_time": "2026-10-05 08:00:00+00:00",
+   "close": 121.08,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.5796,
-   "symbol": "ETHUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-10-05 01:00:00+00:00",
-   "close": 121.16,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.618,
+   "prob_up": 0.5724,
    "symbol": "SOLUSDT",
    "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 74.15,
-   "candle_time": "2026-08-05 01:00:00+00:00",
-   "close": 73.96,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4385,
-   "symbol": "SOLUSDT",
-   "with_trend": null
-  },
-  {
-   "actual_close": 73.77,
-   "candle_time": "2026-08-05 07:00:00+00:00",
-   "close": 73.73,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4454,
-   "symbol": "SOLUSDT",
-   "with_trend": null
-  },
   {
    "actual_close": 74.29,
    "candle_time": "2026-08-05 12:00:00+00:00",
@@ -5517,6 +5486,28 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.6728,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 2706.48,
+   "candle_time": "2026-10-05 01:00:00+00:00",
+   "close": 2724.7,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5796,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 120.45,
+   "candle_time": "2026-10-05 01:00:00+00:00",
+   "close": 121.16,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.618,
    "symbol": "SOLUSDT",
    "with_trend": true
   }
