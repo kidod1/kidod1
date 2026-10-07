@@ -1,67 +1,34 @@
 {
  "pending": [
   {
-   "candle_time": "2026-10-06 22:00:00+00:00",
-   "close": 120.82,
+   "candle_time": "2026-10-07 07:00:00+00:00",
+   "close": 2616.32,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.5666,
+   "prob_up": 0.5555,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-10-07 07:00:00+00:00",
+   "close": 118.63,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5876,
    "symbol": "SOLUSDT",
    "with_trend": true
   },
   {
-   "candle_time": "2026-10-06 22:00:00+00:00",
-   "close": 1.4975,
+   "candle_time": "2026-10-07 08:00:00+00:00",
+   "close": 772.57,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.5815,
-   "symbol": "XRPUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-10-07 01:00:00+00:00",
-   "close": 2657.58,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5993,
-   "symbol": "ETHUSDT",
+   "prob_up": 0.5759,
+   "symbol": "BNBUSDT",
    "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 1.0338,
-   "candle_time": "2026-08-07 07:00:00+00:00",
-   "close": 1.0287,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4412,
-   "symbol": "XRPUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 73.9,
-   "candle_time": "2026-08-07 08:00:00+00:00",
-   "close": 73.2,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4432,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 1.0279,
-   "candle_time": "2026-08-07 11:00:00+00:00",
-   "close": 1.0338,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4208,
-   "symbol": "XRPUSDT",
-   "with_trend": true
-  },
   {
    "actual_close": 1.025,
    "candle_time": "2026-08-07 20:00:00+00:00",
@@ -5527,6 +5494,39 @@
    "interval": "1h",
    "prob_up": 0.5606,
    "symbol": "XRPUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 118.3,
+   "candle_time": "2026-10-06 22:00:00+00:00",
+   "close": 120.82,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5666,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 1.4617,
+   "candle_time": "2026-10-06 22:00:00+00:00",
+   "close": 1.4975,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5815,
+   "symbol": "XRPUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 2620.9,
+   "candle_time": "2026-10-07 01:00:00+00:00",
+   "close": 2657.58,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5993,
+   "symbol": "ETHUSDT",
    "with_trend": true
   }
  ]
