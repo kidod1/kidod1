@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-10-08 00:00:00+00:00",
+   "close": 774.07,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.5959,
+   "symbol": "BNBUSDT",
+   "with_trend": null
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1.0358,
