@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-10-21 21:00:00+00:00",
+   "close": 2499.25,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.437,
+   "symbol": "ETHUSDT",
+   "with_trend": null
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1.0037,
