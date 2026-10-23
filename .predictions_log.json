@@ -1,5 +1,24 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-10-23 19:00:00+00:00",
+   "close": 81282.33,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4074,
+   "symbol": "BTCUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-10-23 19:00:00+00:00",
+   "close": 1.3032,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4453,
+   "symbol": "XRPUSDT",
+   "with_trend": true
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1.0056,
