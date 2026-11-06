@@ -1,47 +1,25 @@
 {
  "pending": [
   {
-   "candle_time": "2026-11-05 22:00:00+00:00",
-   "close": 75718.01,
+   "candle_time": "2026-11-06 05:00:00+00:00",
+   "close": 1.1993,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.4408,
-   "symbol": "BTCUSDT",
-   "with_trend": null
+   "prob_up": 0.4251,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   },
   {
-   "candle_time": "2026-11-05 23:00:00+00:00",
-   "close": 1.2072,
+   "candle_time": "2026-11-06 05:00:00+00:00",
+   "close": 690.63,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.4276,
-   "symbol": "XRPUSDT",
-   "with_trend": null
+   "prob_up": 0.3887,
+   "symbol": "BNBUSDT",
+   "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 75.04,
-   "candle_time": "2026-08-16 16:00:00+00:00",
-   "close": 75.56,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5601,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 0.9941,
-   "candle_time": "2026-08-16 18:00:00+00:00",
-   "close": 0.9994,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4214,
-   "symbol": "XRPUSDT",
-   "with_trend": true
-  },
   {
    "actual_close": 62917.54,
    "candle_time": "2026-08-16 20:00:00+00:00",
@@ -5517,6 +5495,28 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.5542,
+   "symbol": "XRPUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 76195.62,
+   "candle_time": "2026-11-05 22:00:00+00:00",
+   "close": 75718.01,
+   "correct": false,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4408,
+   "symbol": "BTCUSDT",
+   "with_trend": null
+  },
+  {
+   "actual_close": 1.2061,
+   "candle_time": "2026-11-05 23:00:00+00:00",
+   "close": 1.2072,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4276,
    "symbol": "XRPUSDT",
    "with_trend": null
   }
