@@ -1,67 +1,16 @@
 {
  "pending": [
   {
-   "candle_time": "2026-11-16 05:00:00+00:00",
-   "close": 1813.41,
+   "candle_time": "2026-11-16 15:00:00+00:00",
+   "close": 64467.0,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.2584,
-   "symbol": "ETHUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-11-16 05:00:00+00:00",
-   "close": 71.23,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.3376,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "candle_time": "2026-11-16 05:00:00+00:00",
-   "close": 589.97,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.3898,
-   "symbol": "BNBUSDT",
+   "prob_up": 0.3142,
+   "symbol": "BTCUSDT",
    "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 601.8,
-   "candle_time": "2026-08-19 03:00:00+00:00",
-   "close": 601.97,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.4448,
-   "symbol": "BNBUSDT",
-   "with_trend": null
-  },
-  {
-   "actual_close": 1.0053,
-   "candle_time": "2026-08-19 06:00:00+00:00",
-   "close": 1.0044,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.3618,
-   "symbol": "XRPUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 602.8,
-   "candle_time": "2026-08-19 07:00:00+00:00",
-   "close": 601.8,
-   "correct": false,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.444,
-   "symbol": "BNBUSDT",
-   "with_trend": null
-  },
   {
    "actual_close": 65012.12,
    "candle_time": "2026-08-19 09:00:00+00:00",
@@ -5526,6 +5475,39 @@
    "horizon": 4,
    "interval": "1h",
    "prob_up": 0.409,
+   "symbol": "BNBUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 1798.04,
+   "candle_time": "2026-11-16 05:00:00+00:00",
+   "close": 1813.41,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.2584,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 70.86,
+   "candle_time": "2026-11-16 05:00:00+00:00",
+   "close": 71.23,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.3376,
+   "symbol": "SOLUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 589.24,
+   "candle_time": "2026-11-16 05:00:00+00:00",
+   "close": 589.97,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.3898,
    "symbol": "BNBUSDT",
    "with_trend": true
   }
