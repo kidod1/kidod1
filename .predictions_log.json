@@ -1,47 +1,43 @@
 {
  "pending": [
   {
-   "candle_time": "2026-11-19 20:00:00+00:00",
-   "close": 1761.21,
+   "candle_time": "2026-11-20 01:00:00+00:00",
+   "close": 61579.09,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.4232,
+   "prob_up": 0.3721,
+   "symbol": "BTCUSDT",
+   "with_trend": true
+  },
+  {
+   "candle_time": "2026-11-20 01:00:00+00:00",
+   "close": 1735.73,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4481,
    "symbol": "ETHUSDT",
    "with_trend": true
   },
   {
-   "candle_time": "2026-11-19 20:00:00+00:00",
-   "close": 0.9626,
+   "candle_time": "2026-11-20 01:00:00+00:00",
+   "close": 72.11,
    "horizon": 4,
    "interval": "1h",
-   "prob_up": 0.4347,
+   "prob_up": 0.4208,
+   "symbol": "SOLUSDT",
+   "with_trend": null
+  },
+  {
+   "candle_time": "2026-11-20 01:00:00+00:00",
+   "close": 0.9535,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4314,
    "symbol": "XRPUSDT",
    "with_trend": true
   }
  ],
  "resolved": [
-  {
-   "actual_close": 87.24,
-   "candle_time": "2026-08-20 18:00:00+00:00",
-   "close": 86.87,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5578,
-   "symbol": "SOLUSDT",
-   "with_trend": true
-  },
-  {
-   "actual_close": 2359.37,
-   "candle_time": "2026-08-20 21:00:00+00:00",
-   "close": 2318.81,
-   "correct": true,
-   "horizon": 4,
-   "interval": "1h",
-   "prob_up": 0.5773,
-   "symbol": "ETHUSDT",
-   "with_trend": true
-  },
   {
    "actual_close": 74439.74,
    "candle_time": "2026-08-20 22:00:00+00:00",
@@ -5519,6 +5515,28 @@
    "prob_up": 0.439,
    "symbol": "XRPUSDT",
    "with_trend": null
+  },
+  {
+   "actual_close": 1757.47,
+   "candle_time": "2026-11-19 20:00:00+00:00",
+   "close": 1761.21,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4232,
+   "symbol": "ETHUSDT",
+   "with_trend": true
+  },
+  {
+   "actual_close": 0.9622,
+   "candle_time": "2026-11-19 20:00:00+00:00",
+   "close": 0.9626,
+   "correct": true,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.4347,
+   "symbol": "XRPUSDT",
+   "with_trend": true
   }
  ]
 }
