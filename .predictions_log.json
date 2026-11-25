@@ -1,5 +1,15 @@
 {
- "pending": [],
+ "pending": [
+  {
+   "candle_time": "2026-11-25 01:00:00+00:00",
+   "close": 0.9138,
+   "horizon": 4,
+   "interval": "1h",
+   "prob_up": 0.6012,
+   "symbol": "XRPUSDT",
+   "with_trend": null
+  }
+ ],
  "resolved": [
   {
    "actual_close": 1.4519,
